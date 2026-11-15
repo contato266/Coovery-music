@@ -26,9 +26,9 @@
     <!-- Song recognition in Search: a few seconds of microphone audio, fingerprinted for Shazam. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <uses-feature
-        android:name="android.hardware.type.automotive"
-        android:required="false" />
+    <!-- Do not declare android.hardware.type.automotive. Play Console rejects an app that
+         declares that feature together with com.google.android.gms.car.application.
+         Android Auto stays available through that metadata and CarAppService. -->
     <!-- Requesting CAMERA implies a required camera, which would hide the app from TVs and cars. -->
     <uses-feature
         android:name="android.hardware.camera"
