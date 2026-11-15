@@ -1,4 +1,4 @@
-package com.maxrave.simpmusic.service
+package com.coovery.music.service
 
 import android.app.PendingIntent
 import android.content.Intent
@@ -6,7 +6,7 @@ import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import androidx.core.net.toUri
-import com.maxrave.simpmusic.MainActivity
+import com.coovery.music.MainActivity
 
 /**
  * Quick Settings tile for song recognition, a shortcut into the app: it opens

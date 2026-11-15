@@ -1,4 +1,4 @@
-package com.maxrave.simpmusic.service.sync
+package com.coovery.music.service.sync
 
 import android.content.Context
 import androidx.work.CoroutineWorker

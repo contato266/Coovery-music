@@ -1,4 +1,4 @@
-package com.maxrave.simpmusic
+package com.coovery.music
 
 import android.annotation.SuppressLint
 import android.app.Application
@@ -22,9 +22,10 @@ import com.maxrave.data.di.loader.loadAllModules
 import com.maxrave.domain.manager.DataStoreManager
 import com.maxrave.domain.repository.LibrarySyncPhoneRepository
 import com.maxrave.logger.Logger
+import com.maxrave.simpmusic.BuildKonfig
 import com.maxrave.simpmusic.di.viewModelModule
-import com.maxrave.simpmusic.service.backup.AutoBackupScheduler
-import com.maxrave.simpmusic.service.sync.LibrarySyncScheduler
+import com.coovery.music.service.backup.AutoBackupScheduler
+import com.coovery.music.service.sync.LibrarySyncScheduler
 import com.maxrave.simpmusic.utils.NetworkFirstInterceptor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

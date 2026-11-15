@@ -1,4 +1,4 @@
-package com.maxrave.simpmusic
+package com.coovery.music
 
 import android.Manifest
 import android.content.ComponentName
@@ -38,9 +38,10 @@ import com.maxrave.domain.mediaservice.handler.ToastType
 import com.maxrave.domain.repository.LibrarySyncPhoneRepository
 import com.maxrave.logger.Logger
 import com.maxrave.media3.di.setServiceActivitySession
+import com.maxrave.simpmusic.App
 import com.maxrave.simpmusic.di.viewModelModule
-import com.maxrave.simpmusic.service.rss.RssFeedNotifyWork
-import com.maxrave.simpmusic.service.test.notification.NotifyWork
+import com.coovery.music.service.rss.RssFeedNotifyWork
+import com.coovery.music.service.test.notification.NotifyWork
 import com.maxrave.simpmusic.utils.ComposeResUtils
 import com.maxrave.simpmusic.utils.VersionManager
 import com.maxrave.simpmusic.viewModel.SharedViewModel

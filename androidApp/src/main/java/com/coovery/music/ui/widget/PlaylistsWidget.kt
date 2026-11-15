@@ -1,4 +1,4 @@
-package com.maxrave.simpmusic.ui.widget
+package com.coovery.music.ui.widget
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -65,8 +65,8 @@ import com.maxrave.domain.data.entities.SongEntity
 import com.maxrave.domain.data.type.RecentlyType
 import com.maxrave.domain.repository.CommonRepository
 import com.maxrave.domain.utils.toTrack
-import com.maxrave.simpmusic.MainActivity
-import com.maxrave.simpmusic.R
+import com.coovery.music.MainActivity
+import com.coovery.music.R
 import com.maxrave.simpmusic.extension.getColorFromPalette
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.UIEvent

@@ -1,4 +1,4 @@
-package com.maxrave.simpmusic
+package com.coovery.music
 
 import android.content.Context
 import android.content.pm.PackageManager

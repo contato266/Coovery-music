@@ -10,14 +10,12 @@ import kotlinx.datetime.Month
 
 object Config {
     /**
-     * Anything else is our APK renamed and re-signed by someone. The last one is the vivo build
-     * (vivoAndroidApp): vivo's Origin Island only follows packages on vivo's own list.
+     * Upstream SimpMusic package names. This fork does not ship them.
      */
     val OFFICIAL_PACKAGE_NAMES =
         setOf(
             "com.maxrave.simpmusic",
             "com.maxrave.simpmusic.dev",
-            "com.spotify.music",
         )
 
     /**

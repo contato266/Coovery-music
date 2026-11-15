@@ -1,4 +1,4 @@
-package com.maxrave.simpmusic.service.test.notification
+package com.coovery.music.service.test.notification
 
 import android.content.Context
 import androidx.work.CoroutineWorker

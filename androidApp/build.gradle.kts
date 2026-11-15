@@ -16,7 +16,7 @@ plugins {
 android {
     val abis = arrayOf("armeabi-v7a", "arm64-v8a", "x86_64")
 
-    namespace = "com.maxrave.simpmusic"
+    namespace = "com.coovery.music"
     compileSdk = 37
 
     defaultConfig {

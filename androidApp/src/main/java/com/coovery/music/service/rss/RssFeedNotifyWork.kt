@@ -1,4 +1,4 @@
-package com.maxrave.simpmusic.service.rss
+package com.coovery.music.service.rss
 
 import android.content.Context
 import android.util.Xml
@@ -10,7 +10,7 @@ import com.maxrave.domain.extension.epochMillisToLocalDateTime
 import com.maxrave.domain.extension.now
 import com.maxrave.domain.repository.CommonRepository
 import com.maxrave.logger.Logger
-import com.maxrave.simpmusic.service.test.notification.NotificationHandler
+import com.coovery.music.service.test.notification.NotificationHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent

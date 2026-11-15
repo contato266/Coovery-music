@@ -1,4 +1,4 @@
-package com.maxrave.simpmusic.ui.widget
+package com.coovery.music.ui.widget
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -54,8 +54,8 @@ import com.maxrave.common.Config
 import com.maxrave.domain.repository.AnalyticsRepository
 import com.maxrave.domain.repository.ArtistRepository
 import com.maxrave.domain.repository.SongRepository
-import com.maxrave.simpmusic.MainActivity
-import com.maxrave.simpmusic.R
+import com.coovery.music.MainActivity
+import com.coovery.music.R
 import com.maxrave.simpmusic.extension.getColorFromPalette
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import kotlinx.coroutines.CoroutineScope

@@ -1,4 +1,4 @@
-package com.maxrave.simpmusic.service.test.notification
+package com.coovery.music.service.test.notification
 
 import android.Manifest
 import android.app.NotificationChannel
@@ -18,8 +18,8 @@ import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.maxrave.simpmusic.MainActivity
-import com.maxrave.simpmusic.R
+import com.coovery.music.MainActivity
+import com.coovery.music.R
 import com.maxrave.simpmusic.utils.ComposeResUtils
 import kotlinx.coroutines.runBlocking
 
