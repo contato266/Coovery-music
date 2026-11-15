@@ -15,6 +15,11 @@ plugins {
 
 android {
     val abis = arrayOf("armeabi-v7a", "arm64-v8a", "x86_64")
+    // ABI splits write one shrunk-resources file per APK. bundleRelease rejects that set
+    // (https://issuetracker.google.com/issues/402800800). The Play bundle keeps every ABI
+    // in one artifact, so splits stay on only for the APK tasks.
+    val buildingBundle =
+        gradle.startParameter.taskNames.any { it.contains("bundle", ignoreCase = true) }
 
     namespace = "com.coovery.music"
     compileSdk = 37
@@ -91,12 +96,14 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            splits {
-                abi {
-                    isEnable = true
-                    reset()
-                    isUniversalApk = true
-                    include(*abis)
+            if (!buildingBundle) {
+                splits {
+                    abi {
+                        isEnable = true
+                        reset()
+                        isUniversalApk = true
+                        include(*abis)
+                    }
                 }
             }
         }
