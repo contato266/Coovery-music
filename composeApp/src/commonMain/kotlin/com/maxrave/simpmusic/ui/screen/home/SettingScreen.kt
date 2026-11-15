@@ -95,6 +95,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.eygraber.uri.toKmpUri
+import com.maxrave.common.DEFAULT_APP_LANGUAGE
 import com.maxrave.common.LIMIT_CACHE_SIZE
 import com.maxrave.common.QUALITY
 import com.maxrave.common.SUPPORTED_LANGUAGE
@@ -1015,7 +1016,7 @@ fun SettingScreen(
                 )
                 SettingItem(
                     title = stringResource(Res.string.language),
-                    subtitle = SUPPORTED_LANGUAGE.getLanguageFromCode(language ?: "en-US"),
+                    subtitle = SUPPORTED_LANGUAGE.getLanguageFromCode(language ?: DEFAULT_APP_LANGUAGE),
                     onClick = {
                         viewModel.setAlertData(
                             SettingAlertState(
@@ -1024,7 +1025,7 @@ fun SettingScreen(
                                     SettingAlertState.SelectData(
                                         listSelect =
                                             SUPPORTED_LANGUAGE.items.map {
-                                                (it.toString() == SUPPORTED_LANGUAGE.getLanguageFromCode(language ?: "en-US")) to it.toString()
+                                                (it.toString() == SUPPORTED_LANGUAGE.getLanguageFromCode(language ?: DEFAULT_APP_LANGUAGE)) to it.toString()
                                             },
                                     ),
                                 confirm =

@@ -184,7 +184,7 @@ object SUPPORTED_LANGUAGE {
             "Türkçe",
             "Suomi",
             "Polski",
-            "Português",
+            "Português (Brasil)",
             "Français",
             "Español",
             "简体中文 (Simplified Chinese)",
@@ -215,7 +215,7 @@ object SUPPORTED_LANGUAGE {
             "tr-TR",
             "fi-FI",
             "pl-PL",
-            "pt-PT",
+            "pt-BR",
             "fr-FR",
             "es-ES",
             "zh-CN",
@@ -249,19 +249,19 @@ object SUPPORTED_LANGUAGE {
         Logger.d("Config", "getLanguageFromCode: $code")
         Logger.w("Config", "getLanguageFromCode: ${items.getOrNull(index)}")
         if (index == -1) {
-            return "English"
+            return "Português (Brasil)"
         }
-        return (items.getOrNull(index) ?: "English").toString()
+        return (items.getOrNull(index) ?: "Português (Brasil)").toString()
     }
 
     fun getCodeFromLanguage(language: String?): String {
         val index = items.indexOf(language ?: "English")
         Logger.d("Config", "getCodeFromLanguage: $index")
         if (index == -1) {
-            return "en-US"
+            return DEFAULT_APP_LANGUAGE
         }
         Logger.w("Config", "getCodeFromLanguage: ${codes.getOrNull(index)}")
-        return (codes.getOrNull(index) ?: "en-US")
+        return (codes.getOrNull(index) ?: DEFAULT_APP_LANGUAGE)
     }
 }
 
@@ -673,6 +673,12 @@ const val EXOPLAYER_DB_NAME = "exoplayer_internal.db"
 
 const val FIRST_TIME_MIGRATION = "first_time_migration"
 const val SELECTED_LANGUAGE = "selected_language"
+
+/** Language a new install opens in, and the fallback when nothing is stored. */
+const val DEFAULT_APP_LANGUAGE = "pt-BR"
+
+/** Content region that matches [DEFAULT_APP_LANGUAGE]. */
+const val DEFAULT_CONTENT_REGION = "BR"
 
 const val STATUS_DONE = "status_done"
 

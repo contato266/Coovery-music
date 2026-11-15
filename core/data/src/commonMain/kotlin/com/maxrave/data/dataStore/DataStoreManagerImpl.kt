@@ -7,8 +7,9 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.maxrave.common.DEFAULT_APP_LANGUAGE
+import com.maxrave.common.DEFAULT_CONTENT_REGION
 import com.maxrave.common.SELECTED_LANGUAGE
-import com.maxrave.common.SUPPORTED_LANGUAGE
 import com.maxrave.common.SponsorBlockType
 import com.maxrave.domain.data.model.discord.DiscordSession
 import com.maxrave.domain.data.model.network.ProxyConfiguration
@@ -84,7 +85,7 @@ internal class DataStoreManagerImpl(
 
     override val location: Flow<String> =
         settingsDataStore.data.map { preferences ->
-            preferences[LOCATION] ?: "VN"
+            preferences[LOCATION] ?: DEFAULT_CONTENT_REGION
         }
 
     override suspend fun setLocation(location: String) {
@@ -179,7 +180,7 @@ internal class DataStoreManagerImpl(
 
     override val language: Flow<String> =
         settingsDataStore.data.map { preferences ->
-            preferences[stringPreferencesKey(SELECTED_LANGUAGE)] ?: SUPPORTED_LANGUAGE.codes.first()
+            preferences[stringPreferencesKey(SELECTED_LANGUAGE)] ?: DEFAULT_APP_LANGUAGE
         }
 
     override fun getString(key: String): Flow<String?> =

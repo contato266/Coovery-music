@@ -26,11 +26,11 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.eygraber.uri.toKmpUriOrNull
+import com.maxrave.common.DEFAULT_APP_LANGUAGE
+import com.maxrave.common.DEFAULT_CONTENT_REGION
 import com.maxrave.common.FIRST_TIME_MIGRATION
 import com.maxrave.common.SELECTED_LANGUAGE
 import com.maxrave.common.STATUS_DONE
-import com.maxrave.common.SUPPORTED_LANGUAGE
-import com.maxrave.common.SUPPORTED_LOCATION
 import com.maxrave.domain.data.model.intent.GenericIntent
 import com.maxrave.domain.manager.DataStoreManager
 import com.maxrave.domain.mediaservice.handler.MediaPlayerHandler
@@ -57,6 +57,9 @@ import java.util.concurrent.TimeUnit
 
 // Process-wide, so a recreated activity (rotation, theme change) does not count as opening the app.
 private var lastLibrarySyncAt = 0L
+
+/** Set once this install has been given Brazilian Portuguese as its starting language. */
+private const val COOVERY_LANGUAGE_READY = "coovery_language_pt_br"
 
 @Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
@@ -152,47 +155,19 @@ class MainActivity : AppCompatActivity() {
         }
         Logger.d("Italy", "Key: ${Locale.ITALY.toLanguageTag()}")
 
-        // Check if the migration has already been done or not
-        if (getString(FIRST_TIME_MIGRATION) != STATUS_DONE) {
-            Logger.d("Locale Key", "onCreate: ${Locale.getDefault().toLanguageTag()}")
-            if (SUPPORTED_LANGUAGE.codes.contains(Locale.getDefault().toLanguageTag())) {
-                Logger.d(
-                    "Contains",
-                    "onCreate: ${
-                        SUPPORTED_LANGUAGE.codes.contains(
-                            Locale.getDefault().toLanguageTag(),
-                        )
-                    }",
-                )
-                putString(SELECTED_LANGUAGE, Locale.getDefault().toLanguageTag())
-                if (SUPPORTED_LOCATION.items.contains(Locale.getDefault().country)) {
-                    putString("location", Locale.getDefault().country)
-                } else {
-                    putString("location", "US")
-                }
-            } else {
-                putString(SELECTED_LANGUAGE, "en-US")
-            }
-            // Fetch the selected language from wherever it was stored. In this case its SharedPref
-            getString(SELECTED_LANGUAGE)?.let {
-                Logger.d("Locale Key", "getString: $it")
-                // Set this locale using the AndroidX library that will handle the storage itself
-                val localeList = LocaleListCompat.forLanguageTags(it)
-                AppCompatDelegate.setApplicationLocales(localeList)
-                // Set the migration flag to ensure that this is executed only once
-                putString(FIRST_TIME_MIGRATION, STATUS_DONE)
-            }
+        // A new install, and the first open after this fork started shipping in Portuguese,
+        // opens in Brazilian Portuguese. A language picked afterwards is left alone.
+        if (getString(FIRST_TIME_MIGRATION) != STATUS_DONE || getString(COOVERY_LANGUAGE_READY) != STATUS_DONE) {
+            putString(SELECTED_LANGUAGE, DEFAULT_APP_LANGUAGE)
+            putString("location", DEFAULT_CONTENT_REGION)
+            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(DEFAULT_APP_LANGUAGE))
+            putString(FIRST_TIME_MIGRATION, STATUS_DONE)
+            putString(COOVERY_LANGUAGE_READY, STATUS_DONE)
         }
-        if (AppCompatDelegate.getApplicationLocales().toLanguageTags() !=
-            getString(
-                SELECTED_LANGUAGE,
-            )
-        ) {
-            Logger.d(
-                "Locale Key",
-                "onCreate: ${AppCompatDelegate.getApplicationLocales().toLanguageTags()}",
-            )
-            putString(SELECTED_LANGUAGE, AppCompatDelegate.getApplicationLocales().toLanguageTags())
+        val appliedLocales = AppCompatDelegate.getApplicationLocales().toLanguageTags()
+        if (appliedLocales.isNotEmpty() && appliedLocales != getString(SELECTED_LANGUAGE)) {
+            Logger.d("Locale Key", "onCreate: $appliedLocales")
+            putString(SELECTED_LANGUAGE, appliedLocales)
         }
 
         enableEdgeToEdge(

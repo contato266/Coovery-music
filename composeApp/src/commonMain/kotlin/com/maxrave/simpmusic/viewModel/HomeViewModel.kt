@@ -1,8 +1,8 @@
 package com.maxrave.simpmusic.viewModel
 
 import androidx.lifecycle.viewModelScope
+import com.maxrave.common.DEFAULT_APP_LANGUAGE
 import com.maxrave.common.SELECTED_LANGUAGE
-import com.maxrave.common.SUPPORTED_LANGUAGE
 import com.maxrave.domain.data.entities.SongEntity
 import com.maxrave.domain.data.model.home.HomeDataCombine
 import com.maxrave.domain.data.model.home.HomeItem
@@ -103,7 +103,7 @@ class HomeViewModel(
             regionCodeChart.value = dataStoreManager.chartKey.first()
             exploreChart(regionCodeChart.value ?: "ZZ")
             language = dataStoreManager.getString(SELECTED_LANGUAGE).first()
-                ?: SUPPORTED_LANGUAGE.codes.first()
+                ?: DEFAULT_APP_LANGUAGE
             //  refresh when region change
             val job1 =
                 launch {
@@ -189,7 +189,7 @@ class HomeViewModel(
         language =
             runBlocking {
                 dataStoreManager.getString(SELECTED_LANGUAGE).first()
-                    ?: SUPPORTED_LANGUAGE.codes.first()
+                    ?: DEFAULT_APP_LANGUAGE
             }
         regionCode = runBlocking { dataStoreManager.location.first() }
         homeJob?.cancel()
