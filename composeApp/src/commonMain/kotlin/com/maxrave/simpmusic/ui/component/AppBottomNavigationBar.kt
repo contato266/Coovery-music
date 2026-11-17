@@ -44,6 +44,7 @@ import com.maxrave.simpmusic.ui.navigation.destination.home.HomeDestination
 import com.maxrave.simpmusic.ui.navigation.destination.library.LibraryDestination
 import com.maxrave.simpmusic.ui.navigation.destination.library.MixForYouDestination
 import com.maxrave.simpmusic.ui.navigation.destination.search.SearchDestination
+import com.maxrave.simpmusic.ui.theme.tvFocusRing
 import com.maxrave.simpmusic.ui.theme.typo
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -443,6 +444,7 @@ fun AppNavigationRail(
         Spacer(Modifier.weight(1f))
         bottomNavScreens.forEach { screen ->
             NavigationRailItem(
+                modifier = Modifier.tvFocusRing(),
                 icon = screen.icon,
                 label = {
                     Text(

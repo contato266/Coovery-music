@@ -1,5 +1,6 @@
 package com.maxrave.simpmusic.ui.theme
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
@@ -22,6 +23,7 @@ import com.materialkolor.rememberDynamicColorScheme
 import com.maxrave.domain.manager.DataStoreManager
 import com.maxrave.simpmusic.expect.ui.SystemBarAppearanceEffect
 import com.maxrave.simpmusic.expect.ui.platformDynamicColorScheme
+import com.maxrave.simpmusic.isTelevision
 
 /**
  * Semantic colors that sit outside the Material 3 ColorScheme.
@@ -167,17 +169,24 @@ fun AppTheme(
             )
         }
     SystemBarAppearanceEffect(isDark)
+    val television = isTelevision()
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         content = {
             CompositionLocalProvider(
-                LocalRippleConfiguration provides SoftRippleConfiguration,
+                LocalRippleConfiguration provides if (television) TvRippleConfiguration else SoftRippleConfiguration,
                 LocalContentColor provides colorScheme.onSurfaceVariant,
                 LocalAppColors provides if (isDark) DarkAppColors else LightAppColors,
                 LocalIsDarkTheme provides isDark,
                 LocalForcedDarkColorScheme provides forcedDarkScheme,
                 LocalLiquidGlassEnabled provides liquidGlassEnabled,
-                content = content,
+                content = {
+                    if (television) {
+                        CompositionLocalProvider(LocalIndication provides TvFocusIndication, content = content)
+                    } else {
+                        content()
+                    }
+                },
             )
         },
         typography = typo(colorScheme),
@@ -238,12 +247,20 @@ fun ForceDarkContent(content: @Composable () -> Unit) {
     MaterialExpressiveTheme(
         colorScheme = darkScheme,
         content = {
+            val television = isTelevision()
             CompositionLocalProvider(
                 LocalForceDarkText provides true,
                 LocalIsDarkTheme provides true,
                 LocalContentColor provides darkScheme.onSurfaceVariant,
                 LocalAppColors provides DarkAppColors,
-                content = content,
+                LocalRippleConfiguration provides if (television) TvRippleConfiguration else LocalRippleConfiguration.current,
+                content = {
+                    if (television) {
+                        CompositionLocalProvider(LocalIndication provides TvFocusIndication, content = content)
+                    } else {
+                        content()
+                    }
+                },
             )
         },
         typography = typo(darkScheme, forceDark = true),

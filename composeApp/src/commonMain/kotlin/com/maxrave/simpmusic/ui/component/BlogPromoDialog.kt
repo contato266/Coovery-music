@@ -6,9 +6,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.DialogProperties
+import com.maxrave.simpmusic.ui.theme.tvFocusRing
 import com.maxrave.simpmusic.ui.theme.typo
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -36,7 +38,9 @@ fun BlogPromoDialog(
             onDismissRequest.invoke()
         },
         confirmButton = {
-            TextButton(onClick = {
+            TextButton(
+                modifier = Modifier.tvFocusRing(),
+                onClick = {
                 onVisitBlog.invoke()
                 uriHandler.openUri("https://www.simpmusic.org/blogs")
             }) {
@@ -47,7 +51,9 @@ fun BlogPromoDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = {
+            TextButton(
+                modifier = Modifier.tvFocusRing(),
+                onClick = {
                 onDismissRequest.invoke()
             }) {
                 Text(

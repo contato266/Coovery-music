@@ -15,4 +15,10 @@
     <style name="Theme.SimpMusic" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:windowBackground">@color/simpmusic_cold_start_background</item>
     </style>
+
+    <!-- Applied only when the device is a television. The system focus highlight is one faint
+         rectangle on the whole Compose view, so it cannot follow the focused control. -->
+    <style name="Theme.SimpMusic.Tv">
+        <item name="android:defaultFocusHighlightEnabled">false</item>
+    </style>
 </resources>

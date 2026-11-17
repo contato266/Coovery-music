@@ -10,7 +10,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -121,6 +120,8 @@ import com.maxrave.simpmusic.ui.icon.PlayArrow
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.theme.ArtworkShape
 import com.maxrave.simpmusic.ui.theme.LocalForceDarkText
+import com.maxrave.simpmusic.isTelevision
+import com.maxrave.simpmusic.ui.theme.tvFocusable
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.HomeViewModel
 import com.maxrave.simpmusic.viewModel.base.BaseViewModel
@@ -212,7 +213,7 @@ fun HomeSectionHeader(
         modifier =
             if (channelId != null) {
                 Modifier
-                    .focusable(true)
+                    .tvFocusable()
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
                         navController.navigate(
@@ -224,7 +225,7 @@ fun HomeSectionHeader(
             } else if (moreEndpoint != null) {
                 // The section title carries the same endpoint as its "More" button, as on the web.
                 Modifier
-                    .focusable(true)
+                    .tvFocusable()
                     .clip(RoundedCornerShape(8.dp))
                     .clickable { navController.navigateToMoreEndpoint(moreEndpoint, data.title) }
             } else {
@@ -448,8 +449,15 @@ internal fun rememberCardHover(enabled: Boolean): Pair<Modifier, Boolean> {
     val hovered by source.collectIsHoveredAsState()
     var focused by remember { mutableStateOf(false) }
     val active = enabled && (hovered || focused)
+    // On TV the focus ring is the light-blue selector. The faint onSurface tint is what made
+    // the highlight look washed out once focus moved off the first card.
+    val television = isTelevision()
     val tint by animateColorAsState(
-        targetValue = if (active) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f) else Color.Transparent,
+        targetValue =
+            when {
+                !active || television -> Color.Transparent
+                else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f)
+            },
         label = "cardHoverTint",
     )
     val modifier =
@@ -588,7 +596,7 @@ fun HomeItemContentPlaylist(
         Modifier
             .then(hoverModifier)
             .wrapContentSize()
-            .focusable(true)
+            .tvFocusable()
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -850,7 +858,7 @@ fun QuickPicksItem(
             Modifier
                 .wrapContentHeight()
                 .width(widthDp - 30.dp)
-                .focusable(true)
+                .tvFocusable()
                 .clip(RoundedCornerShape(8.dp))
                 .combinedClickable(
                     onClick = onClick,
@@ -975,7 +983,7 @@ fun HomeItemSong(
             Modifier
                 .then(hoverModifier)
                 .fillMaxSize()
-                .focusable(true)
+                .tvFocusable()
                 .clip(RoundedCornerShape(8.dp))
                 .combinedClickable(
                     onClick = onClick,
@@ -1086,7 +1094,7 @@ fun HomeItemVideo(
         Modifier
             .then(hoverModifier)
             .fillMaxSize()
-            .focusable(true)
+            .tvFocusable()
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
                 onClick = onClick,
@@ -1205,7 +1213,7 @@ fun HomeItemArtist(
     Box(
         Modifier
             .fillMaxSize()
-            .focusable(true)
+            .tvFocusable()
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -1324,7 +1332,7 @@ fun ItemVideoChart(
     Box(
         Modifier
             .wrapContentSize()
-            .focusable(true)
+            .tvFocusable()
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -1424,7 +1432,7 @@ fun ItemArtistChart(
     Box(
         Modifier
             .wrapContentSize()
-            .focusable(true)
+            .tvFocusable()
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -1525,7 +1533,7 @@ fun ItemTrackChart(
         modifier =
             Modifier
                 .wrapContentSize()
-                .focusable(true)
+                .tvFocusable()
                 .clip(RoundedCornerShape(8.dp))
                 .clickable {
                     onClick()

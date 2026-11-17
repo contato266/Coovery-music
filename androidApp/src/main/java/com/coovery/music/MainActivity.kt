@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.res.Configuration
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -128,6 +129,11 @@ class MainActivity : AppCompatActivity() {
     @ExperimentalFoundationApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (isTelevisionDevice()) {
+            // Dialogs created after this inherit the activity theme, so they drop the
+            // system highlight too.
+            theme.applyStyle(R.style.Theme_SimpMusic_Tv, true)
+        }
         loadKoinModules(
             module {
                 single<AppCompatActivity> { this@MainActivity }
@@ -317,5 +323,11 @@ class MainActivity : AppCompatActivity() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         viewModel.activityRecreate()
+    }
+
+    private fun isTelevisionDevice(): Boolean {
+        val uiMode = resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK
+        return uiMode == Configuration.UI_MODE_TYPE_TELEVISION ||
+            packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
     }
 }
