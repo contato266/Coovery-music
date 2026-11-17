@@ -1355,37 +1355,13 @@ class Ytmusic {
         onComplete(isSuccess, lastException)
     }
 
-    /**
-     * True only when the CDN actually refuses the URL.
-     *
-     * A HEAD that times out, or that googlevideo answers with 403 while a one-byte GET of the
-     * same URL succeeds, is not a refusal. Treating either as one made [YouTube.newPipePlayer]
-     * throw the URL away, and the player then showed "check your internet" for a song that
-     * would have played — most often a cover tapped right after the app opened, while the
-     * connection was still cold.
-     */
-    suspend fun is403Url(url: String): Boolean =
-        try {
-            !streamUrlPlays(url)
+    suspend fun is403Url(url: String): Boolean {
+        return try {
+            return httpClient.head(url).status.value in 400..499
         } catch (e: Exception) {
-            Logger.w(TAG, "Stream check did not finish (${e::class.simpleName}); the URL will be tried")
-            false
+            e.printStackTrace()
+            true
         }
-
-    private suspend fun streamUrlPlays(url: String): Boolean {
-        val headCode =
-            runCatching { httpClient.head(url).status.value }.getOrElse { error ->
-                (error as? ClientRequestException)?.response?.status?.value ?: return true
-            }
-        if (headCode in 200..299) return true
-        if (headCode != 400 && headCode != 403 && headCode != 405) return false
-        val getCode =
-            runCatching {
-                httpClient.get(url) { header(HttpHeaders.Range, "bytes=0-0") }.status.value
-            }.getOrElse { error ->
-                (error as? ClientRequestException)?.response?.status?.value ?: return true
-            }
-        return getCode in 200..299 || getCode == 206
     }
 
     suspend fun getTidalOAuthToken() =
