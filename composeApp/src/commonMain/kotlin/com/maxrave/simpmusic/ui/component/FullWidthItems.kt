@@ -77,6 +77,7 @@ import com.maxrave.domain.repository.SongRepository
 import com.maxrave.domain.utils.connectArtists
 import com.maxrave.domain.utils.isLive
 import com.maxrave.domain.utils.toListName
+import com.maxrave.simpmusic.isTelevision
 import com.maxrave.simpmusic.ui.icon.Add
 import com.maxrave.simpmusic.ui.icon.Check
 import com.maxrave.simpmusic.ui.icon.DownloadForOffline
@@ -177,6 +178,14 @@ fun SongFullWidthItems(
             }
         }
         val itemVideoId = track?.videoId ?: songEntity?.videoId ?: ""
+        val activateItem: () -> Unit = {
+            if (selectionMode) {
+                onSelectToggle?.invoke(itemVideoId)
+            } else {
+                onClickListener?.invoke(itemVideoId)
+            }
+            Unit
+        }
         Box(
             modifier =
                 modifier
@@ -184,13 +193,7 @@ fun SongFullWidthItems(
                     .background(
                         if (isSelected) seed.copy(alpha = 0.18f) else Color.Transparent,
                     ).combinedClickable(
-                        onClick = {
-                            if (selectionMode) {
-                                onSelectToggle?.invoke(itemVideoId)
-                            } else {
-                                onClickListener?.invoke(itemVideoId)
-                            }
-                        },
+                        onClick = activateItem,
                         onLongClick =
                             if (onLongClick != null) {
                                 { onLongClick(itemVideoId) }
@@ -327,7 +330,7 @@ fun SongFullWidthItems(
                                 .basicMarquee(
                                     iterations = Int.MAX_VALUE,
                                     animationMode = MarqueeAnimationMode.Immediately,
-                                ).focusable(),
+                                ).then(if (isTelevision()) Modifier else Modifier.focusable()),
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         AnimatedVisibility(
@@ -378,7 +381,7 @@ fun SongFullWidthItems(
                                     .basicMarquee(
                                         iterations = Int.MAX_VALUE,
                                         animationMode = MarqueeAnimationMode.Immediately,
-                                    ).focusable(),
+                                    ).then(if (isTelevision()) Modifier else Modifier.focusable()),
                         )
                     }
                 }
@@ -482,7 +485,7 @@ fun SuggestItems(
                             .basicMarquee(
                                 iterations = Int.MAX_VALUE,
                                 animationMode = MarqueeAnimationMode.Immediately,
-                            ).focusable(),
+                            ).then(if (isTelevision()) Modifier else Modifier.focusable()),
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (track.isLive) LiveBadge(modifier = Modifier.padding(end = 6.dp))
@@ -501,7 +504,7 @@ fun SuggestItems(
                                 .basicMarquee(
                                     iterations = Int.MAX_VALUE,
                                     animationMode = MarqueeAnimationMode.Immediately,
-                                ).focusable(),
+                                ).then(if (isTelevision()) Modifier else Modifier.focusable()),
                     )
                 }
             }
@@ -637,7 +640,7 @@ fun PlaylistFullWidthItems(
                             .basicMarquee(
                                 iterations = Int.MAX_VALUE,
                                 animationMode = MarqueeAnimationMode.Immediately,
-                            ).focusable(),
+                            ).then(if (isTelevision()) Modifier else Modifier.focusable()),
                 )
 
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -664,7 +667,7 @@ fun PlaylistFullWidthItems(
                                 .basicMarquee(
                                     iterations = Int.MAX_VALUE,
                                     animationMode = MarqueeAnimationMode.Immediately,
-                                ).focusable(),
+                                ).then(if (isTelevision()) Modifier else Modifier.focusable()),
                     )
                 }
 
@@ -681,7 +684,7 @@ fun PlaylistFullWidthItems(
                                 .basicMarquee(
                                     iterations = Int.MAX_VALUE,
                                     animationMode = MarqueeAnimationMode.Immediately,
-                                ).focusable(),
+                                ).then(if (isTelevision()) Modifier else Modifier.focusable()),
                     )
                 }
             }
@@ -759,7 +762,7 @@ fun ArtistFullWidthItems(
                             .basicMarquee(
                                 iterations = Int.MAX_VALUE,
                                 animationMode = MarqueeAnimationMode.Immediately,
-                            ).focusable(),
+                            ).then(if (isTelevision()) Modifier else Modifier.focusable()),
                 )
 
                 Text(
@@ -774,7 +777,7 @@ fun ArtistFullWidthItems(
                             .basicMarquee(
                                 iterations = Int.MAX_VALUE,
                                 animationMode = MarqueeAnimationMode.Immediately,
-                            ).focusable(),
+                            ).then(if (isTelevision()) Modifier else Modifier.focusable()),
                 )
             }
             if (rightView != null) {

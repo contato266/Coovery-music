@@ -122,6 +122,7 @@ import com.maxrave.simpmusic.ui.theme.ArtworkShape
 import com.maxrave.simpmusic.ui.theme.LocalForceDarkText
 import com.maxrave.simpmusic.isTelevision
 import com.maxrave.simpmusic.ui.theme.tvFocusable
+import com.maxrave.simpmusic.ui.theme.tvOk
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.HomeViewModel
 import com.maxrave.simpmusic.viewModel.base.BaseViewModel
@@ -600,10 +601,9 @@ fun HomeItemContentPlaylist(
             .then(hoverModifier)
             .wrapContentSize()
             .tvFocusable()
+            .tvOk(onClick)
             .clip(RoundedCornerShape(8.dp))
-            .clickable {
-                onClick()
-            },
+            .clickable(onClick = onClick),
     ) {
         Column(
             modifier =
@@ -871,6 +871,7 @@ fun QuickPicksItem(
                 .wrapContentHeight()
                 .width(widthDp - 30.dp)
                 .tvFocusable()
+                .tvOk(onClick)
                 .clip(RoundedCornerShape(8.dp))
                 .combinedClickable(
                     onClick = onClick,
@@ -998,6 +999,7 @@ fun HomeItemSong(
                 .then(hoverModifier)
                 .fillMaxSize()
                 .tvFocusable()
+                .tvOk(onClick)
                 .clip(RoundedCornerShape(8.dp))
                 .combinedClickable(
                     onClick = onClick,
@@ -1121,6 +1123,7 @@ fun HomeItemVideo(
             .then(hoverModifier)
             .fillMaxSize()
             .tvFocusable()
+            .tvOk(onClick)
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
                 onClick = onClick,
@@ -1240,10 +1243,9 @@ fun HomeItemArtist(
         Modifier
             .fillMaxSize()
             .tvFocusable()
+            .tvOk(onClick)
             .clip(RoundedCornerShape(8.dp))
-            .clickable {
-                onClick()
-            },
+            .clickable(onClick = onClick),
     ) {
         Column(
             modifier =
@@ -1359,10 +1361,9 @@ fun ItemVideoChart(
         Modifier
             .wrapContentSize()
             .tvFocusable()
+            .tvOk(onClick)
             .clip(RoundedCornerShape(8.dp))
-            .clickable {
-                onClick()
-            },
+            .clickable(onClick = onClick),
     ) {
         Column(
             modifier =
@@ -1459,10 +1460,9 @@ fun ItemArtistChart(
         Modifier
             .wrapContentSize()
             .tvFocusable()
+            .tvOk(onClick)
             .clip(RoundedCornerShape(8.dp))
-            .clickable {
-                onClick()
-            },
+            .clickable(onClick = onClick),
     ) {
         Row(
             modifier =
@@ -1560,10 +1560,9 @@ fun ItemTrackChart(
             Modifier
                 .wrapContentSize()
                 .tvFocusable()
+                .tvOk(onClick)
                 .clip(RoundedCornerShape(8.dp))
-                .clickable {
-                    onClick()
-                },
+                .clickable(onClick = onClick),
     ) {
         Row(
             modifier =

@@ -3,7 +3,6 @@ package com.maxrave.simpmusic.ui.theme
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.IndicationNodeFactory
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.FocusInteraction
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.material.ripple.RippleAlpha
@@ -12,6 +11,11 @@ import androidx.compose.material3.RippleConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -59,9 +63,33 @@ internal val TvRippleConfiguration =
 @Composable
 fun Modifier.tvFocusRing(corner: Dp = 12.dp): Modifier = if (isTelevision()) this.then(TvFocusRingElement(corner)) else this
 
-/** [focusable] plus [tvFocusRing], for rows that take focus themselves. */
+/**
+ * Focus ring for a card that is also [androidx.compose.foundation.clickable].
+ *
+ * The clickable is already the focus target. A second [androidx.compose.foundation.focusable]
+ * in front of it made the remote's first OK only move focus onto the clickable, so a song
+ * started on the second OK.
+ */
 @Composable
-fun Modifier.tvFocusable(corner: Dp = 12.dp): Modifier = this.tvFocusRing(corner).focusable()
+fun Modifier.tvFocusable(corner: Dp = 12.dp): Modifier = this.tvFocusRing(corner)
+
+/**
+ * One OK on the remote runs [onOk], including when a child such as a scrolling title holds focus.
+ * Key down is consumed so the clickable underneath does not run the action a second time on key up.
+ */
+@Composable
+fun Modifier.tvOk(onOk: () -> Unit): Modifier {
+    if (!isTelevision()) return this
+    return this.onPreviewKeyEvent { event ->
+        val ok =
+            event.key == Key.DirectionCenter ||
+                event.key == Key.Enter ||
+                event.key == Key.NumPadEnter
+        if (!ok) return@onPreviewKeyEvent false
+        if (event.type == KeyEventType.KeyUp) onOk()
+        true
+    }
+}
 
 /** Used as [androidx.compose.foundation.LocalIndication] on TV, so a plain clickable gets the same ring. */
 internal object TvFocusIndication : IndicationNodeFactory {
