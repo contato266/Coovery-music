@@ -22,16 +22,17 @@ internal fun List<Pair<Int, String>>.hasRequiredItags(): Boolean {
 private val streamHealthCheckClient: OkHttpClient by lazy {
     OkHttpClient
         .Builder()
-        .connectTimeout(2, TimeUnit.SECONDS)
-        .readTimeout(2, TimeUnit.SECONDS)
-        .callTimeout(3, TimeUnit.SECONDS)
+        .connectTimeout(8, TimeUnit.SECONDS)
+        .readTimeout(8, TimeUnit.SECONDS)
+        .callTimeout(10, TimeUnit.SECONDS)
         .build()
 }
 
 /**
- * Pick one random URL whose itag belongs to [ITAG.AUDIO] or [ITAG.VIDEO] and HEAD it. Returns true
- * only when the response code is in the 200..299 range. We only health-check those URLs because
- * they are the ones the player will actually use; lower-quality extras can stay unverified.
+ * Pick one random URL whose itag belongs to [ITAG.AUDIO] or [ITAG.VIDEO] and HEAD it. A timeout
+ * or a dropped connection counts as usable: those are not a stale signature, and discarding the
+ * URL there is what left a home-screen song unplayable with a "check your internet" toast.
+ * We only health-check those URLs because they are the ones the player will actually use.
  */
 internal fun List<Pair<Int, String>>.headCheckRandomStream(): Boolean {
     val required = ITAG.AUDIO + ITAG.VIDEO
@@ -60,7 +61,7 @@ internal fun List<Pair<Int, String>>.headCheckRandomStream(): Boolean {
                 got.code in 200..299 || got.code == 206
             }
         }
-    }.getOrDefault(false)
+    }.getOrDefault(true)
 }
 
 class BraveNewPipeDownloaderImpl(

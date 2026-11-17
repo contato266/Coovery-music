@@ -1465,12 +1465,12 @@ class YouTube {
                     ?.let { addAll(it) }
             },
         )
-        listUrlSig.forEach {
-            Logger.d(TAG, "YouTube NewPipe URL $it")
-        }
-        val randomUrl = listUrlSig.randomOrNull() ?: return null
-        if (listUrlSig.isNotEmpty() && !is403Url(randomUrl)) {
-            Logger.d(TAG, "YouTube NewPipe Found URL $randomUrl")
+        // One itag can fail the check while the audio the player will use is fine. Accept the
+        // response when any of the first few URLs plays, and a check that never finishes is not
+        // a refusal (see Ytmusic.is403Url).
+        val playable = listUrlSig.isNotEmpty() && listUrlSig.shuffled().take(3).any { !is403Url(it) }
+        if (playable) {
+            Logger.d(TAG, "YouTube NewPipe found a playable stream")
             return decodedSigResponse
         } else {
             Logger.d(TAG, "YouTube NewPipe No URL Found")
