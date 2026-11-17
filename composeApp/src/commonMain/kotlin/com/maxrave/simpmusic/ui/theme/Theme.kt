@@ -122,6 +122,20 @@ private fun ColorScheme.withNeutralLightSurfaces(): ColorScheme =
         inverseOnSurface = Color(0xFFF1F1F1),
     )
 
+/** YouTube's TV page: near-black, with a slightly lifted container for rails and sheets. */
+private fun ColorScheme.asYouTubeTv(): ColorScheme =
+    copy(
+        background = Color(0xFF0F0F0F),
+        surface = Color(0xFF0F0F0F),
+        surfaceDim = Color(0xFF0F0F0F),
+        surfaceBright = Color(0xFF3A3A3A),
+        surfaceContainerLowest = Color(0xFF000000),
+        surfaceContainerLow = Color(0xFF181818),
+        surfaceContainer = Color(0xFF212121),
+        surfaceContainerHigh = Color(0xFF272727),
+        surfaceContainerHighest = Color(0xFF3A3A3A),
+    )
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun AppTheme(
@@ -133,7 +147,9 @@ fun AppTheme(
         @Composable()
         () -> Unit,
 ) {
-    val isDark = isDarkTheme(themeMode)
+    val television = isTelevision()
+    // YouTube on a TV is dark. The phone and desktop keep the theme the user picked.
+    val isDark = television || isDarkTheme(themeMode)
     val wallpaperScheme =
         if (themeColorSource == DataStoreManager.THEME_COLOR_WALLPAPER) {
             platformDynamicColorScheme(isDark)
@@ -149,13 +165,15 @@ fun AppTheme(
     // Light pins the neutrals to a neutral-grey ramp (the seed otherwise tints them warm/cream);
     // dark keeps the generated neutrals as they are.
     val colorScheme =
-        wallpaperScheme
-            ?: rememberDynamicColorScheme(
-                seedColor = seedColor,
-                isDark = isDark,
-                style = PaletteStyle.TonalSpot,
-                modifyColorScheme = { cs -> if (isDark) cs else cs.withNeutralLightSurfaces() },
-            )
+        (
+            wallpaperScheme
+                ?: rememberDynamicColorScheme(
+                    seedColor = seedColor,
+                    isDark = isDark,
+                    style = PaletteStyle.TonalSpot,
+                    modifyColorScheme = { cs -> if (isDark) cs else cs.withNeutralLightSurfaces() },
+                )
+        ).let { scheme -> if (television) scheme.asYouTubeTv() else scheme }
     // Immersive screens stay dark even at light theme (see [ForceDarkContent]). Resolve their scheme
     // once here instead of letting every such subtree build a palette of its own.
     val forcedDarkScheme =
@@ -169,7 +187,6 @@ fun AppTheme(
             )
         }
     SystemBarAppearanceEffect(isDark)
-    val television = isTelevision()
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         content = {

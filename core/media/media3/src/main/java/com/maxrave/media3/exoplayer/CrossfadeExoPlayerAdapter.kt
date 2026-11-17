@@ -3157,9 +3157,17 @@ internal class CrossfadeExoPlayerAdapter(
 
         positionUpdateJob =
             coroutineScope.launch {
+                var lastEngagementMs = 0L
                 while (isActive && currentPlayer != null) {
                     try {
                         currentPlayer?.let { player ->
+                            if (internalState == InternalState.PLAYING && player.isPlaying) {
+                                val nowMs = android.os.SystemClock.elapsedRealtime()
+                                if (nowMs - lastEngagementMs >= 20_000L) {
+                                    lastEngagementMs = nowMs
+                                    forwardingPlayer.reaffirmPlaying()
+                                }
+                            }
                             if (internalState == InternalState.PLAYING ||
                                 internalState == InternalState.READY ||
                                 internalState == InternalState.PAUSED

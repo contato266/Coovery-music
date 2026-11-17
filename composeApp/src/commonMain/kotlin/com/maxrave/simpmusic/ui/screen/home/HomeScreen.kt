@@ -158,6 +158,7 @@ import com.maxrave.simpmusic.ui.component.QuickPicksItem
 import com.maxrave.simpmusic.ui.component.ReviewDialog
 import com.maxrave.simpmusic.ui.component.SectionHeaderButton
 import com.maxrave.simpmusic.ui.component.ShareSavedLyricsDialog
+import com.maxrave.simpmusic.isTelevision
 import com.maxrave.simpmusic.ui.component.homeCardAspectRatio
 import com.maxrave.simpmusic.ui.component.rememberHolderPainter
 import com.maxrave.simpmusic.ui.icon.Notifications
@@ -279,6 +280,7 @@ fun HomeScreen(
         koinInject(),
     navController: NavController,
 ) {
+    val television = isTelevision()
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberLazyListState()
     val isScrollingUp by scrollState.isScrollingUp()
@@ -454,7 +456,13 @@ fun HomeScreen(
     }
     LaunchedEffect(openAppTime, shareLyricsPermissions) {
         Logger.w("HomeScreen", "openAppTime: $openAppTime, shareLyricsPermissions: $shareLyricsPermissions")
-        if (openAppTime >= 10 && openAppTime % 10 == 0 && openAppTime <= 50) {
+        if (television) {
+            // Phone prompts (review, blog, lyrics) cover the shelves. YouTube on a TV does not show them.
+            showReviewDialog = false
+            showFootgunsDialog = false
+            showRequestShareLyricsPermissions = false
+            showBlogPromoDialog = false
+        } else if (openAppTime >= 10 && openAppTime % 10 == 0 && openAppTime <= 50) {
             showReviewDialog = true
         } else if ((openAppTime == 1 || openAppTime % 15 == 0) && openAppTime <= 60 && !shareLyricsPermissions) {
             showRequestShareLyricsPermissions = true

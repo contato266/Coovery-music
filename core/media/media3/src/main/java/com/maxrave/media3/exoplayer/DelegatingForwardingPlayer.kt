@@ -451,4 +451,32 @@ internal class DelegatingForwardingPlayer(
             }
         }
     }
+
+    /**
+     * Tell the session this playback is still engaged.
+     *
+     * Media3 drops the foreground service 10 minutes after it last saw
+     * [Player.STATE_READY] or [Player.STATE_BUFFERING] with playWhenReady. A swap that
+     * leaves the session on the outgoing [Player.STATE_ENDED] starts that clock while
+     * audio is still coming out, and the process is then eligible to be killed.
+     * Replaying the live state keeps the service up for as long as something is playing.
+     */
+    fun reaffirmPlaying() {
+        val player = wrappedPlayer
+        if (!player.isPlaying && !player.playWhenReady) return
+        val state =
+            when (val current = getPlaybackState()) {
+                Player.STATE_IDLE, Player.STATE_ENDED -> Player.STATE_READY
+                else -> current
+            }
+        trackedListeners.forEach { listener ->
+            try {
+                listener.onPlayWhenReadyChanged(true, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
+                listener.onPlaybackStateChanged(state)
+                listener.onIsPlayingChanged(player.isPlaying)
+            } catch (e: Exception) {
+                Logger.w(TAG, "Error reaffirming playback: ${e.message}")
+            }
+        }
+    }
 }

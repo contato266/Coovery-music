@@ -1,5 +1,7 @@
 package com.maxrave.simpmusic.ui.theme
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.IndicationNodeFactory
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.FocusInteraction
@@ -15,6 +17,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
@@ -114,18 +117,32 @@ private class TvFocusRingNode(
     var corner: Dp,
 ) : Modifier.Node(), DrawModifierNode, FocusEventModifierNode {
     private var focused = false
+    private val focusScale = Animatable(1f)
 
     override fun onFocusEvent(focusState: FocusState) {
         // hasFocus covers a Material button whose clickable child is the real focus target.
         val now = focusState.hasFocus
         if (now != focused) {
             focused = now
-            invalidateDraw()
+            coroutineScope.launch {
+                focusScale.animateTo(if (now) 1.06f else 1f, tween(160)) {
+                    invalidateDraw()
+                }
+            }
         }
     }
 
     override fun ContentDrawScope.draw() {
-        drawTvFocus(focused, corner)
+        val zoom = focusScale.value
+        if (zoom == 1f) {
+            drawTvFocus(focused, corner)
+        } else {
+            // YouTube grows the focused shelf card over its neighbours. The layout slot stays put.
+            val card = this
+            scale(zoom, zoom) {
+                with(card) { drawTvFocus(focused, corner) }
+            }
+        }
     }
 }
 

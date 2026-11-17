@@ -70,6 +70,7 @@ import com.maxrave.logger.Logger
 import com.maxrave.simpmusic.expect.Orientation
 import com.maxrave.simpmusic.expect.currentOrientation
 import com.maxrave.simpmusic.expect.openUrl
+import com.maxrave.simpmusic.expect.ui.KeepScreenOn
 import com.maxrave.simpmusic.expect.ui.layerBackdrop
 import com.maxrave.simpmusic.expect.ui.rememberBackdrop
 import com.maxrave.simpmusic.extension.copy
@@ -156,6 +157,9 @@ fun App(
     val isDesktopShell = getPlatform() == Platform.Desktop
 
     val sleepTimerState by viewModel.sleepTimerState.collectAsStateWithLifecycle()
+    val controllerState by viewModel.controllerState.collectAsStateWithLifecycle()
+    // YouTube keeps a TV awake while music plays. A screensaver here was closing the app.
+    KeepScreenOn(isTelevision() && controllerState.isPlaying)
     val nowPlayingData by viewModel.nowPlayingState.collectAsStateWithLifecycle()
     val updateData by viewModel.updateResponse.collectAsStateWithLifecycle()
     val intent by viewModel.intent.collectAsStateWithLifecycle()

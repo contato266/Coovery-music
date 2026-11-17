@@ -21,18 +21,25 @@ import com.maxrave.kotlinytmusicscraper.YouTube
 import com.maxrave.kotlinytmusicscraper.models.MediaType
 import com.maxrave.kotlinytmusicscraper.models.response.PlayerResponse
 import com.maxrave.logger.Logger
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 internal class StreamRepositoryImpl(
     private val localDataSource: LocalDataSource,
     private val youTube: YouTube,
 ) : StreamRepository {
+    // Tempo lookup must not sit on the path that hands the player its URL.
+    private val metadataScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     override suspend fun insertNewFormat(newFormat: NewFormatEntity) =
         withContext(Dispatchers.IO) {
             localDataSource.insertNewFormat(newFormat)
@@ -199,38 +206,8 @@ internal class StreamRepositoryImpl(
                             ", expires in ${response.streamingData?.expiresInSeconds}s",
                     )
                     val durationSecond = response.videoDetails?.lengthSeconds?.toIntOrNull()
-                    // AutoMix metadata from Tidal official API
-                    var tidalBpm: Int? = null
-                    var tidalMusicKey: String? = null
-                    var tidalKeyScale: String? = null
-                    if (!isVideo && durationSecond != null && data.third == MediaType.Song) {
-                        val title = response.videoDetails?.title ?: ""
-                        val author = response.videoDetails?.author ?: ""
-                        val q =
-                            "$title $author"
-                                .replace(
-                                    Regex("\\((feat\\.|ft.|cùng với|con|mukana|com|avec|合作音乐人: ) "),
-                                    " ",
-                                ).replace(
-                                    Regex("( và | & | и | e | und |, |和| dan)"),
-                                    " ",
-                                ).replace("  ", " ")
-                                .replace(Regex("([()])"), "")
-                                .replace(".", " ")
-                                .replace("  ", " ")
-                        Logger.d("Stream", "Search Tidal metadata for: $q")
-                        youTube
-                            .searchTidalMetadata(q, durationSecond)
-                            .onSuccess { metadata ->
-                                Logger.d("Stream", "Tidal metadata: $metadata")
-                                tidalBpm = metadata.bpm
-                                tidalMusicKey = metadata.musicKey
-                                tidalKeyScale = metadata.keyScale
-                            }.onFailure {
-                                Logger.e("Stream", "Tidal metadata error: ${it.message}", it)
-                            }
-                    }
-                    insertNewFormat(
+                    val streamUrl = response.streamingData?.hlsManifestUrl ?: format?.url
+                    val formatEntity =
                         NewFormatEntity(
                             videoId = if (VIDEO_QUALITY.itags.contains(format?.itag)) "${MERGING_DATA_TYPE.VIDEO}$videoId" else videoId,
                             itag = format?.itag ?: itag,
@@ -271,14 +248,50 @@ internal class StreamRepositoryImpl(
                                     "https://music.youtube.com",
                                 ),
                             cpn = data.first,
-                            expiredTime = now().plusSeconds(response.streamingData?.expiresInSeconds?.toLong() ?: 0L),
+                            expiredTime =
+                                now().plusSeconds(
+                                    streamTtlSeconds(streamUrl, response.streamingData?.expiresInSeconds?.toLong()),
+                                ),
                             audioUrl = if (muxed) response.streamingData?.hlsManifestUrl else format?.url,
                             videoUrl = if (muxed) response.streamingData?.hlsManifestUrl else videoFormat?.url,
-                            bpm = tidalBpm,
-                            musicKey = tidalMusicKey,
-                            keyScale = tidalKeyScale,
-                        ),
-                    )
+                            bpm = null,
+                            musicKey = null,
+                            keyScale = null,
+                        )
+                    insertNewFormat(formatEntity)
+                    if (!isVideo && durationSecond != null && data.third == MediaType.Song) {
+                        val title = response.videoDetails?.title ?: ""
+                        val author = response.videoDetails?.author ?: ""
+                        metadataScope.launch {
+                            val q =
+                                "$title $author"
+                                    .replace(
+                                        Regex("\\((feat\\.|ft.|cùng với|con|mukana|com|avec|合作音乐人: ) "),
+                                        " ",
+                                    ).replace(
+                                        Regex("( và | & | и | e | und |, |和| dan)"),
+                                        " ",
+                                    ).replace("  ", " ")
+                                    .replace(Regex("([()])"), "")
+                                    .replace(".", " ")
+                                    .replace("  ", " ")
+                            Logger.d("Stream", "Search Tidal metadata for: $q")
+                            youTube
+                                .searchTidalMetadata(q, durationSecond)
+                                .onSuccess { metadata ->
+                                    Logger.d("Stream", "Tidal metadata: $metadata")
+                                    insertNewFormat(
+                                        formatEntity.copy(
+                                            bpm = metadata.bpm,
+                                            musicKey = metadata.musicKey,
+                                            keyScale = metadata.keyScale,
+                                        ),
+                                    )
+                                }.onFailure {
+                                    Logger.e("Stream", "Tidal metadata error: ${it.message}", it)
+                                }
+                        }
+                    }
                     if (data.first != null) {
                         emit(
                             if (muxed) {
@@ -410,4 +423,28 @@ internal class StreamRepositoryImpl(
             }
         }
     }
+}
+
+/**
+ * How long a resolved URL can be reused.
+ *
+ * The googlevideo `expire` query is a unix timestamp and is the real deadline. When it is
+ * missing, [expiresInSeconds] is used, and a missing or zero value used to store "already
+ * expired", so every later chunk ran a full extraction again. Six hours is the usual window.
+ */
+@OptIn(ExperimentalTime::class)
+private fun streamTtlSeconds(
+    url: String?,
+    expiresInSeconds: Long?,
+): Long {
+    val expireEpoch =
+        url
+            ?.substringAfter("expire=", "")
+            ?.substringBefore('&')
+            ?.toLongOrNull()
+    if (expireEpoch != null && expireEpoch > 1_000_000_000L) {
+        val remaining = expireEpoch - Clock.System.now().epochSeconds
+        if (remaining > 30L) return remaining
+    }
+    return expiresInSeconds?.takeIf { it > 30L } ?: (6L * 60L * 60L)
 }

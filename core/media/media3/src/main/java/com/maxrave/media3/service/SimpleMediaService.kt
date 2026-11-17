@@ -14,6 +14,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaSessionService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
@@ -86,6 +87,12 @@ internal class SimpleMediaService :
                 setSmallIcon(R.drawable.mono)
             },
         )
+        // A TV that thinks playback has gone idle will stop this process. Keep the media
+        // notification up, and hold the longest engagement window Media3 allows (10 minutes,
+        // clamped inside setForegroundServiceTimeoutMs). The player also reaffirms READY
+        // while audio is actually playing, so that window keeps getting reset.
+        setShowNotificationForIdlePlayer(MediaSessionService.SHOW_NOTIFICATION_FOR_IDLE_PLAYER_ALWAYS)
+        setForegroundServiceTimeoutMs(MediaSessionService.DEFAULT_FOREGROUND_SERVICE_TIMEOUT_MS)
 
         if (mediaSession == null) {
             mediaSession =
@@ -174,6 +181,12 @@ internal class SimpleMediaService :
     @UnstableApi
     override fun onTaskRemoved(rootIntent: Intent?) {
         Logger.w("Service", "Simple Media Service Task Removed")
+        // A TV screensaver or the launcher reclaiming the activity removes the task while
+        // music is still playing. Leaving then used to exit the process. Keep playing.
+        if (player.isPlaying || player.playWhenReady) {
+            Logger.w("Service", "Task removed during playback; the session stays up")
+            return
+        }
         if (simpleMediaServiceHandler.shouldReleaseOnTaskRemoved()) {
             release()
             super.onTaskRemoved(rootIntent)

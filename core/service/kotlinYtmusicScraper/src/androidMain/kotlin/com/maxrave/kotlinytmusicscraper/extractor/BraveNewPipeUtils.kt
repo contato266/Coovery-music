@@ -10,6 +10,7 @@ import org.schabi.newpipe.extractor.downloader.Response
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException
 import java.io.IOException
 import java.net.Proxy
+import java.util.concurrent.TimeUnit
 
 internal fun List<Pair<Int, String>>.hasRequiredItags(): Boolean {
     val itags = this.mapTo(HashSet()) { it.first }
@@ -21,6 +22,9 @@ internal fun List<Pair<Int, String>>.hasRequiredItags(): Boolean {
 private val streamHealthCheckClient: OkHttpClient by lazy {
     OkHttpClient
         .Builder()
+        .connectTimeout(2, TimeUnit.SECONDS)
+        .readTimeout(2, TimeUnit.SECONDS)
+        .callTimeout(3, TimeUnit.SECONDS)
         .build()
 }
 
@@ -33,14 +37,28 @@ internal fun List<Pair<Int, String>>.headCheckRandomStream(): Boolean {
     val required = ITAG.AUDIO + ITAG.VIDEO
     val candidate = this.filter { it.first in required }.randomOrNull() ?: return false
     return runCatching {
-        val request =
+        val head =
             okhttp3.Request
                 .Builder()
                 .head()
                 .url(candidate.second)
                 .build()
-        streamHealthCheckClient.newCall(request).execute().use { response ->
-            response.code in 200..299
+        streamHealthCheckClient.newCall(head).execute().use { response ->
+            if (response.code in 200..299) return@use true
+            // googlevideo often answers 400/403/405 to HEAD for a URL that plays. A one-byte
+            // GET is the check that matches what the player will actually do, and it fails
+            // in a few seconds instead of falling through to a second full extraction.
+            if (response.code != 400 && response.code != 403 && response.code != 405) return@use false
+            val ranged =
+                okhttp3.Request
+                    .Builder()
+                    .get()
+                    .url(candidate.second)
+                    .header("Range", "bytes=0-0")
+                    .build()
+            streamHealthCheckClient.newCall(ranged).execute().use { got ->
+                got.code in 200..299 || got.code == 206
+            }
         }
     }.getOrDefault(false)
 }

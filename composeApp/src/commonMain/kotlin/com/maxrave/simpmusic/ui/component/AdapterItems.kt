@@ -590,7 +590,10 @@ fun HomeItemContentPlaylist(
     onPlay: (() -> Unit)? = null,
 ) {
     val titleColor = if (forceDark) Color.White else MaterialTheme.colorScheme.onSurface
-    val textWidth = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(thumbSize)
+    val television = isTelevision()
+    // YouTube's shelves are wide 16:9 cards. Phones keep the square artwork.
+    val artWidth = if (television && !fillMaxWidth) 300.dp else thumbSize
+    val textWidth = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(artWidth)
     val (hoverModifier, hovered) = rememberCardHover(enabled = onPlay != null)
     Box(
         Modifier
@@ -611,7 +614,16 @@ fun HomeItemContentPlaylist(
                     // text engine counts Poppins' line gap (Skia on Desktop does), 65.8dp when not.
                     // A cell-filling card has no such row to match and its artwork is narrower than
                     // thumbSize, so the floor would only add empty space under every tile.
-                    .then(if (fillMaxWidth) Modifier else Modifier.heightIn(min = thumbSize + if (compactCards) cardTextBlockFloor() else 70.dp)),
+                    .then(
+                        if (fillMaxWidth) {
+                            Modifier
+                        } else {
+                            Modifier.heightIn(
+                                min = (if (television) artWidth * 9f / 16f else thumbSize) +
+                                    if (compactCards) cardTextBlockFloor() else 70.dp,
+                            )
+                        },
+                    ),
         ) {
             val thumb =
                 when (data) {
@@ -715,8 +727,8 @@ fun HomeItemContentPlaylist(
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier =
-                        (if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.size(thumbSize))
-                            .aspectRatio(1f)
+                        (if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(artWidth))
+                            .aspectRatio(if (television) 16f / 9f else 1f)
                             .clip(
                                 ArtworkShape,
                             ).hoverZoom(hovered),
@@ -976,7 +988,9 @@ fun HomeItemSong(
     // Home's hover play button; null leaves the card exactly as it was.
     onPlay: (() -> Unit)? = null,
 ) {
-    val textWidth = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(160.dp)
+    val television = isTelevision()
+    val artWidth = if (television && !fillMaxWidth) 280.dp else 160.dp
+    val textWidth = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(artWidth)
     val (hoverModifier, hovered) = rememberCardHover(enabled = onPlay != null)
     Box(
         modifier =
@@ -994,7 +1008,11 @@ fun HomeItemSong(
             modifier =
                 Modifier
                     .padding(start = cardSidePadding, top = 10.dp, end = cardSidePadding, bottom = 6.dp)
-                    .heightIn(min = if (compactCards) 160.dp + cardTextBlockFloor() else 230.dp),
+                    .heightIn(
+                        min =
+                            (if (television) artWidth * 9f / 16f else 160.dp) +
+                                if (compactCards) cardTextBlockFloor() else 70.dp,
+                    ),
         ) {
             val thumb =
                 data.thumbnails.lastOrNull()?.url?.let {
@@ -1020,7 +1038,13 @@ fun HomeItemSong(
                     contentScale = ContentScale.Crop,
                     modifier =
                         Modifier
-                            .then(if (fillMaxWidth) Modifier.fillMaxWidth().aspectRatio(1f) else Modifier.size(160.dp))
+                            .then(
+                                if (fillMaxWidth) {
+                                    Modifier.fillMaxWidth().aspectRatio(if (television) 16f / 9f else 1f)
+                                } else {
+                                    Modifier.width(artWidth).aspectRatio(if (television) 16f / 9f else 1f)
+                                },
+                            )
                             .clip(
                                 ArtworkShape,
                             ).hoverZoom(hovered),
@@ -1088,7 +1112,9 @@ fun HomeItemVideo(
     onPlay: (() -> Unit)? = null,
 ) {
     val titleColor = if (forceDark) Color.White else MaterialTheme.colorScheme.onSurface
-    val textWidth = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(284.5.dp)
+    val television = isTelevision()
+    val videoHeight = if (television && !fillMaxWidth) 210.dp else 160.dp
+    val textWidth = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(videoHeight * 16f / 9f)
     val (hoverModifier, hovered) = rememberCardHover(enabled = onPlay != null)
     Box(
         Modifier
@@ -1124,7 +1150,7 @@ fun HomeItemVideo(
                     contentScale = ContentScale.Crop,
                     modifier =
                         Modifier
-                            .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.height(160.dp))
+                            .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.height(videoHeight))
                             .aspectRatio(16f / 9f)
                             .clip(
                                 ArtworkShape,
