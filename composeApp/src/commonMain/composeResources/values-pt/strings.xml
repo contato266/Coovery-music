@@ -580,4 +580,23 @@
     <string name="month_full_oct">Outubro</string>
     <string name="month_full_nov">Novembro</string>
     <string name="month_full_dec">Dezembro</string>
+    <string name="coovery_access_title">Coovery Music</string>
+    <string name="coovery_access_subtitle">Entre para abrir o aplicativo. O login do YouTube continua separado, dentro dos Ajustes.</string>
+    <string name="coovery_access_email">E-mail</string>
+    <string name="coovery_access_password">Senha</string>
+    <string name="coovery_access_sign_in">Entrar</string>
+    <string name="coovery_access_create">Criar conta</string>
+    <string name="coovery_access_checking">Verificando sua conta…</string>
+    <string name="coovery_access_inactive">Esta conta ainda não tem um plano ativo. Quando o plano for liberado, toque em Verificar de novo.</string>
+    <string name="coovery_access_unreadable">Não foi possível ler o plano. Verifique a conexão e tente de novo.</string>
+    <string name="coovery_access_retry">Verificar de novo</string>
+    <string name="coovery_access_sign_out">Sair</string>
+    <string name="coovery_access_invalid_credentials">E-mail ou senha incorretos.</string>
+    <string name="coovery_access_email_in_use">Esse e-mail já tem uma conta. Entre com ele.</string>
+    <string name="coovery_access_weak_password">Use uma senha com pelo menos 6 caracteres.</string>
+    <string name="coovery_access_invalid_email">Esse e-mail não é válido.</string>
+    <string name="coovery_access_login_disabled">O login por e-mail ainda não está ativado neste aplicativo.</string>
+    <string name="coovery_access_too_many">Muitas tentativas. Espere um momento e tente de novo.</string>
+    <string name="coovery_access_network">Sem conexão com o serviço de contas.</string>
+    <string name="coovery_access_unknown">Não foi possível concluir o login.</string>
 </resources>

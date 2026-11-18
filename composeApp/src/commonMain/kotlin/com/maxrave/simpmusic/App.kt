@@ -96,7 +96,10 @@ import com.maxrave.simpmusic.ui.navigation.destination.list.PlaylistDestination
 import com.maxrave.simpmusic.ui.navigation.destination.player.FullscreenDestination
 import com.maxrave.simpmusic.ui.navigation.destination.search.SearchDestination
 import com.maxrave.simpmusic.ui.navigation.graph.AppNavigationGraph
+import com.maxrave.simpmusic.account.CooveryAccessState
+import com.maxrave.simpmusic.account.CooveryAccessStore
 import com.maxrave.simpmusic.ui.screen.MiniPlayer
+import com.maxrave.simpmusic.ui.screen.access.CooveryAccessGate
 import com.maxrave.simpmusic.ui.screen.other.UnofficialBuildScreen
 import com.maxrave.simpmusic.ui.screen.player.NowPlayingScreen
 import com.maxrave.simpmusic.ui.screen.player.NowPlayingScreenContent
@@ -522,6 +525,19 @@ fun App(
     ) {
         if (!isOfficialBuild) {
             UnofficialBuildScreen()
+            return@AppTheme
+        }
+        val accessStore = remember { CooveryAccessStore() }
+        var accessState by remember { mutableStateOf<CooveryAccessState>(CooveryAccessState.Checking) }
+        LaunchedEffect(Unit) {
+            accessState = accessStore.restore()
+        }
+        if (accessState !is CooveryAccessState.Active) {
+            CooveryAccessGate(
+                state = accessState,
+                store = accessStore,
+                onState = { accessState = it },
+            )
             return@AppTheme
         }
         // Read inside AppTheme so MaterialTheme reflects the resolved scheme.
