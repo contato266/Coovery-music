@@ -50,20 +50,16 @@ import simpmusic.composeapp.generated.resources.coovery_access_checking
 import simpmusic.composeapp.generated.resources.coovery_access_create
 import simpmusic.composeapp.generated.resources.coovery_access_email
 import simpmusic.composeapp.generated.resources.coovery_access_email_in_use
-import simpmusic.composeapp.generated.resources.coovery_access_inactive
 import simpmusic.composeapp.generated.resources.coovery_access_invalid_credentials
 import simpmusic.composeapp.generated.resources.coovery_access_invalid_email
 import simpmusic.composeapp.generated.resources.coovery_access_login_disabled
 import simpmusic.composeapp.generated.resources.coovery_access_network
 import simpmusic.composeapp.generated.resources.coovery_access_password
-import simpmusic.composeapp.generated.resources.coovery_access_retry
 import simpmusic.composeapp.generated.resources.coovery_access_sign_in
-import simpmusic.composeapp.generated.resources.coovery_access_sign_out
 import simpmusic.composeapp.generated.resources.coovery_access_subtitle
 import simpmusic.composeapp.generated.resources.coovery_access_title
 import simpmusic.composeapp.generated.resources.coovery_access_too_many
 import simpmusic.composeapp.generated.resources.coovery_access_unknown
-import simpmusic.composeapp.generated.resources.coovery_access_unreadable
 import simpmusic.composeapp.generated.resources.coovery_access_weak_password
 
 @Composable
@@ -76,20 +72,6 @@ internal fun CooveryAccessGate(
         CooveryAccessState.Checking -> CooveryAccessBusy(stringResource(Res.string.coovery_access_checking))
         CooveryAccessState.SignedOut ->
             CooveryAccessForm(
-                store = store,
-                onState = onState,
-            )
-        is CooveryAccessState.Inactive ->
-            CooveryAccessWaiting(
-                message =
-                    stringResource(
-                        if (state.unreadable) {
-                            Res.string.coovery_access_unreadable
-                        } else {
-                            Res.string.coovery_access_inactive
-                        },
-                    ),
-                email = state.email,
                 store = store,
                 onState = onState,
             )
@@ -234,69 +216,6 @@ private fun CooveryAccessForm(
         if (busy) {
             Spacer(Modifier.height(16.dp))
             CircularProgressIndicator()
-        }
-    }
-}
-
-@Composable
-private fun CooveryAccessWaiting(
-    message: String,
-    email: String,
-    store: CooveryAccessStore,
-    onState: (CooveryAccessState) -> Unit,
-) {
-    val scope = rememberCoroutineScope()
-    var busy by remember { mutableStateOf(false) }
-    Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            message,
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-        )
-        if (email.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                email,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Spacer(Modifier.height(24.dp))
-        Button(
-            onClick = {
-                if (busy) return@Button
-                busy = true
-                scope.launch {
-                    onState(store.restore())
-                    busy = false
-                }
-            },
-            enabled = !busy,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .tvFocusable(),
-        ) {
-            Text(stringResource(Res.string.coovery_access_retry))
-        }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = {
-                scope.launch { onState(store.signOut()) }
-            },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .tvFocusable(),
-        ) {
-            Text(stringResource(Res.string.coovery_access_sign_out))
         }
     }
 }

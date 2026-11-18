@@ -6,14 +6,11 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.header
 import io.ktor.client.request.post
-import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpMethod
 import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -23,18 +20,28 @@ import okio.FileSystem
 import okio.Path.Companion.toPath
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 /**
- * Coovery account gate. Email and password go to Firebase Authentication.
- * Whether the account may open the app is a Firestore document the owner sets:
- * users/{uid} with planActive = true, and an optional planExpiresAt timestamp.
- * YouTube sign-in is a different account and is not touched here.
+ * Coovery account gate. A valid email and password are enough to open the app.
+ * Firebase Authentication is the only check. YouTube sign-in is a different
+ * account and is not touched here.
  */
 internal class CooveryAccessStore {
     suspend fun restore(): CooveryAccessState {
         val session = readSession() ?: return CooveryAccessState.SignedOut
-        return loadPlan(session)
+        if (session.expiresAtEpochMs > now() + TOKEN_SKEW_MS) {
+            return CooveryAccessState.Active(session.email)
+        }
+        return when (val refreshed = refresh(session)) {
+            is Refresh.Ok -> {
+                writeSession(refreshed.session)
+                CooveryAccessState.Active(refreshed.session.email)
+            }
+            Refresh.Rejected -> {
+                signOut()
+            }
+            Refresh.Offline -> CooveryAccessState.Active(session.email)
+        }
     }
 
     suspend fun signIn(
@@ -74,81 +81,10 @@ internal class CooveryAccessStore {
             response.session?.copy(email = response.session.email.ifBlank { trimmed })
                 ?: return CooveryAccessResult.Failed(CooveryAccessFailure.Unknown)
         writeSession(session)
-        return when (val state = loadPlan(session)) {
-            CooveryAccessState.SignedOut -> CooveryAccessResult.Failed(CooveryAccessFailure.Unknown)
-            else -> CooveryAccessResult.Ready(state)
-        }
+        return CooveryAccessResult.Ready(CooveryAccessState.Active(session.email))
     }
 
-    private suspend fun loadPlan(session: CooverySession): CooveryAccessState {
-        val fresh =
-            if (session.expiresAtEpochMs > now() + TOKEN_SKEW_MS) {
-                session
-            } else {
-                refresh(session) ?: return CooveryAccessState.SignedOut
-            }
-        if (fresh != session) writeSession(fresh)
-        val document = readPlan(fresh.idToken, fresh.localId)
-        if (document == null) {
-            val retried = refresh(fresh) ?: return CooveryAccessState.SignedOut
-            writeSession(retried)
-            return when (val again = readPlan(retried.idToken, retried.localId)) {
-                null -> CooveryAccessState.SignedOut
-                else -> planState(retried.email, again)
-            }
-        }
-        return planState(fresh.email, document)
-    }
-
-    private fun planState(
-        email: String,
-        plan: PlanDocument,
-    ): CooveryAccessState =
-        when {
-            plan.unreadable -> CooveryAccessState.Inactive(email, unreadable = true)
-            plan.active -> CooveryAccessState.Active(email)
-            else -> CooveryAccessState.Inactive(email)
-        }
-
-    private suspend fun readPlan(
-        idToken: String,
-        localId: String,
-    ): PlanDocument? {
-        val url =
-            "https://firestore.googleapis.com/v1/projects/${CooveryFirebase.PROJECT_ID}" +
-                "/databases/(default)/documents/users/$localId"
-        val response =
-            try {
-                client.request(url) {
-                    method = HttpMethod.Get
-                    header("Authorization", "Bearer $idToken")
-                }
-            } catch (_: Exception) {
-                return PlanDocument(active = false, unreadable = true)
-            }
-        val text = response.bodyAsText()
-        return when (response.status.value) {
-            200 -> parsePlan(text)
-            404 -> PlanDocument(active = false, unreadable = false)
-            401 -> null
-            else -> PlanDocument(active = false, unreadable = true)
-        }
-    }
-
-    private fun parsePlan(text: String): PlanDocument {
-        val fields =
-            runCatching { Json.parseToJsonElement(text).jsonObject["fields"]?.jsonObject }.getOrNull()
-                ?: return PlanDocument(active = false, unreadable = true)
-        val active = fields["planActive"]?.jsonObject?.get("booleanValue")?.jsonPrimitive?.booleanOrNull == true
-        val expires = fields["planExpiresAt"]?.jsonObject?.get("timestampValue")?.jsonPrimitive?.contentOrNull
-        if (!active) return PlanDocument(active = false, unreadable = false)
-        if (expires.isNullOrBlank()) return PlanDocument(active = true, unreadable = false)
-        val stillValid =
-            runCatching { Instant.parse(expires).toEpochMilliseconds() > now() }.getOrDefault(false)
-        return PlanDocument(active = stillValid, unreadable = false)
-    }
-
-    private suspend fun refresh(session: CooverySession): CooverySession? {
+    private suspend fun refresh(session: CooverySession): Refresh {
         val response =
             try {
                 client.post("https://securetoken.googleapis.com/v1/token?key=${CooveryFirebase.API_KEY}") {
@@ -158,17 +94,20 @@ internal class CooveryAccessStore {
                     )
                 }
             } catch (_: Exception) {
-                return null
+                return Refresh.Offline
             }
-        if (response.status.value !in 200..299) return null
-        val body = runCatching { Json.parseToJsonElement(response.bodyAsText()).jsonObject }.getOrNull() ?: return null
-        val idToken = body["id_token"]?.jsonPrimitive?.contentOrNull ?: return null
+        if (response.status.value !in 200..299) return Refresh.Rejected
+        val body = runCatching { Json.parseToJsonElement(response.bodyAsText()).jsonObject }.getOrNull()
+            ?: return Refresh.Rejected
+        val idToken = body["id_token"]?.jsonPrimitive?.contentOrNull ?: return Refresh.Rejected
         val refreshToken = body["refresh_token"]?.jsonPrimitive?.contentOrNull ?: session.refreshToken
         val expiresIn = body["expires_in"]?.jsonPrimitive?.contentOrNull?.toLongOrNull() ?: 3600L
-        return session.copy(
-            idToken = idToken,
-            refreshToken = refreshToken,
-            expiresAtEpochMs = now() + expiresIn * 1000,
+        return Refresh.Ok(
+            session.copy(
+                idToken = idToken,
+                refreshToken = refreshToken,
+                expiresAtEpochMs = now() + expiresIn * 1000,
+            ),
         )
     }
 
@@ -250,10 +189,15 @@ internal class CooveryAccessStore {
         val failure: CooveryAccessFailure? = null,
     )
 
-    private data class PlanDocument(
-        val active: Boolean,
-        val unreadable: Boolean,
-    )
+    private sealed interface Refresh {
+        data class Ok(
+            val session: CooverySession,
+        ) : Refresh
+
+        data object Rejected : Refresh
+
+        data object Offline : Refresh
+    }
 
     private companion object {
         const val TOKEN_SKEW_MS = 60_000L
@@ -274,11 +218,6 @@ internal sealed interface CooveryAccessState {
     data object Checking : CooveryAccessState
 
     data object SignedOut : CooveryAccessState
-
-    data class Inactive(
-        val email: String,
-        val unreadable: Boolean = false,
-    ) : CooveryAccessState
 
     data class Active(
         val email: String,

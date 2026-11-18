@@ -1152,16 +1152,12 @@
     <string name="browser_login_refresh">Refresh browser profiles</string>
     <string name="soundcloud_play_count_info">%1$s - song info</string>
     <string name="coovery_access_title">Coovery Music</string>
-    <string name="coovery_access_subtitle">Sign in to open the app. YouTube stays a separate sign-in inside Settings.</string>
+    <string name="coovery_access_subtitle">Sign in with your email and password. YouTube stays a separate sign-in inside Settings.</string>
     <string name="coovery_access_email">Email</string>
     <string name="coovery_access_password">Password</string>
     <string name="coovery_access_sign_in">Sign in</string>
     <string name="coovery_access_create">Create account</string>
     <string name="coovery_access_checking">Checking your account…</string>
-    <string name="coovery_access_inactive">This account does not have an active plan yet. When the plan is turned on, tap Check again.</string>
-    <string name="coovery_access_unreadable">The plan could not be read. Check the connection and try again.</string>
-    <string name="coovery_access_retry">Check again</string>
-    <string name="coovery_access_sign_out">Sign out</string>
     <string name="coovery_access_invalid_credentials">Email or password is wrong.</string>
     <string name="coovery_access_email_in_use">That email already has an account. Sign in instead.</string>
     <string name="coovery_access_weak_password">Use a password of at least 6 characters.</string>
