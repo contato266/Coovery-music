@@ -1,0 +1,333 @@
+package com.coovery.music
+
+import android.Manifest
+import android.content.ComponentName
+import android.content.Intent
+import android.content.ServiceConnection
+import android.content.res.Configuration
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.os.IBinder
+import android.os.SystemClock
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.net.toUri
+import androidx.core.os.LocaleListCompat
+import androidx.lifecycle.lifecycleScope
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.eygraber.uri.toKmpUriOrNull
+import com.maxrave.common.DEFAULT_APP_LANGUAGE
+import com.maxrave.common.DEFAULT_CONTENT_REGION
+import com.maxrave.common.FIRST_TIME_MIGRATION
+import com.maxrave.common.SELECTED_LANGUAGE
+import com.maxrave.common.STATUS_DONE
+import com.maxrave.domain.data.model.intent.GenericIntent
+import com.maxrave.domain.manager.DataStoreManager
+import com.maxrave.domain.mediaservice.handler.MediaPlayerHandler
+import com.maxrave.domain.mediaservice.handler.ToastType
+import com.maxrave.domain.repository.LibrarySyncPhoneRepository
+import com.maxrave.logger.Logger
+import com.maxrave.media3.di.setServiceActivitySession
+import com.maxrave.simpmusic.App
+import com.maxrave.simpmusic.di.viewModelModule
+import com.coovery.music.service.rss.RssFeedNotifyWork
+import com.coovery.music.service.test.notification.NotifyWork
+import com.maxrave.simpmusic.utils.ComposeResUtils
+import com.maxrave.simpmusic.utils.VersionManager
+import com.maxrave.simpmusic.viewModel.SharedViewModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import org.koin.android.ext.android.inject
+import org.koin.core.context.loadKoinModules
+import org.koin.core.context.unloadKoinModules
+import org.koin.dsl.module
+import org.simpmusic.crashlytics.pushPlayerError
+import pub.devrel.easypermissions.EasyPermissions
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+
+// Process-wide, so a recreated activity (rotation, theme change) does not count as opening the app.
+private var lastLibrarySyncAt = 0L
+
+/** Set once this install has been given Brazilian Portuguese as its starting language. */
+private const val COOVERY_LANGUAGE_READY = "coovery_language_pt_br"
+
+@Suppress("DEPRECATION")
+class MainActivity : AppCompatActivity() {
+    val viewModel: SharedViewModel by inject()
+    val mediaPlayerHandler by inject<MediaPlayerHandler>()
+    val dataStoreManager: DataStoreManager by inject()
+    private val librarySync: LibrarySyncPhoneRepository by inject()
+
+    private var mBound = false
+    private var shouldUnbind = false
+    private val serviceConnection =
+        object : ServiceConnection {
+            override fun onServiceConnected(
+                name: ComponentName?,
+                service: IBinder?,
+            ) {
+//                mediaPlayerHandler.setActivitySession(this@MainActivity, MainActivity::class.java, service)
+                setServiceActivitySession(this@MainActivity, MainActivity::class.java, service)
+                Logger.w("MainActivity", "onServiceConnected: ")
+                mBound = true
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                Logger.w("MainActivity", "onServiceDisconnected: ")
+                mBound = false
+            }
+        }
+
+    override fun onStart() {
+        super.onStart()
+        startMusicService()
+        // Every return to the screen asks; the pass itself runs at most once a day.
+        viewModel.runSmartDownloadsIfDue()
+        syncLibraryIfDue()
+    }
+
+    // ponytail: a fixed 5-minute gap between app-open rounds, since a computer that is off costs a
+    // LAN sweep each time; WorkManager covers the rest every 15 minutes, and "Sync now" ignores it.
+    private fun syncLibraryIfDue() {
+        val now = SystemClock.elapsedRealtime()
+        if (lastLibrarySyncAt != 0L && now - lastLibrarySyncAt < 5 * 60_000L) return
+        lastLibrarySyncAt = now
+        lifecycleScope.launch { librarySync.syncNow() }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (shouldUnbind) {
+            unbindService(serviceConnection)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        Logger.d("MainActivity", "onNewIntent: $intent")
+        viewModel.setIntent(
+            GenericIntent(
+                action = intent.action,
+                data = (intent.data ?: intent.getStringExtra(Intent.EXTRA_TEXT)?.toUri())?.toKmpUriOrNull(),
+                type = intent.type,
+            ),
+        )
+    }
+
+    @ExperimentalFoundationApi
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (isTelevisionDevice()) {
+            // Dialogs created after this inherit the activity theme, so they drop the
+            // system highlight too.
+            theme.applyStyle(R.style.Theme_SimpMusic_Tv, true)
+        }
+        loadKoinModules(
+            module {
+                single<AppCompatActivity> { this@MainActivity }
+            },
+        )
+        // Recreate view model to fix the issue of view model not getting data from the service
+        unloadKoinModules(viewModelModule)
+        loadKoinModules(viewModelModule)
+        VersionManager.initialize()
+        checkForUpdate()
+        if (viewModel.recreateActivity.value || viewModel.isServiceRunning) {
+            viewModel.activityRecreateDone()
+        } else {
+            startMusicService()
+        }
+        Logger.d("MainActivity", "onCreate: ")
+        val data = (intent?.data ?: intent?.getStringExtra(Intent.EXTRA_TEXT)?.toUri())?.toKmpUriOrNull()
+        if (data != null) {
+            viewModel.setIntent(
+                GenericIntent(
+                    action = intent.action,
+                    data = data,
+                    type = intent.type,
+                ),
+            )
+        }
+        Logger.d("Italy", "Key: ${Locale.ITALY.toLanguageTag()}")
+
+        // A new install, and the first open after this fork started shipping in Portuguese,
+        // opens in Brazilian Portuguese. A language picked afterwards is left alone.
+        if (getString(FIRST_TIME_MIGRATION) != STATUS_DONE || getString(COOVERY_LANGUAGE_READY) != STATUS_DONE) {
+            putString(SELECTED_LANGUAGE, DEFAULT_APP_LANGUAGE)
+            putString("location", DEFAULT_CONTENT_REGION)
+            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(DEFAULT_APP_LANGUAGE))
+            putString(FIRST_TIME_MIGRATION, STATUS_DONE)
+            putString(COOVERY_LANGUAGE_READY, STATUS_DONE)
+        }
+        val appliedLocales = AppCompatDelegate.getApplicationLocales().toLanguageTags()
+        if (appliedLocales.isNotEmpty() && appliedLocales != getString(SELECTED_LANGUAGE)) {
+            Logger.d("Locale Key", "onCreate: $appliedLocales")
+            putString(SELECTED_LANGUAGE, appliedLocales)
+        }
+
+        enableEdgeToEdge(
+            navigationBarStyle =
+                SystemBarStyle.dark(
+                    scrim = Color.Transparent.toArgb(),
+                ),
+            statusBarStyle =
+                SystemBarStyle.dark(
+                    scrim = Color.Transparent.toArgb(),
+                ),
+        )
+        viewModel.checkIsRestoring()
+        val request =
+            PeriodicWorkRequestBuilder<NotifyWork>(
+                12L,
+                TimeUnit.HOURS,
+            ).addTag("Worker Test")
+                .setConstraints(
+                    Constraints
+                        .Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build(),
+                ).build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "Artist Worker",
+            ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
+        lifecycleScope.launch {
+            dataStoreManager.blogNotificationEnabled.collect { enabled ->
+                if (enabled == DataStoreManager.TRUE) {
+                    val rssRequest =
+                        PeriodicWorkRequestBuilder<RssFeedNotifyWork>(
+                            24L,
+                            TimeUnit.HOURS,
+                        ).addTag("Blog RSS Worker")
+                            .setConstraints(
+                                Constraints
+                                    .Builder()
+                                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                                    .build(),
+                            ).build()
+                    WorkManager.getInstance(this@MainActivity).enqueueUniquePeriodicWork(
+                        "Blog RSS Worker",
+                        ExistingPeriodicWorkPolicy.KEEP,
+                        rssRequest,
+                    )
+                } else {
+                    WorkManager.getInstance(this@MainActivity).cancelUniqueWork("Blog RSS Worker")
+                }
+            }
+        }
+
+        if (!EasyPermissions.hasPermissions(this, Manifest.permission.POST_NOTIFICATIONS)) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val doNotAsk = getString("notification_permission_do_not_ask")
+                if (doNotAsk != "true") {
+                    val wasAsked = getString("notification_permission_asked")
+                    if (wasAsked != "true") {
+                        // First time: request system permission
+                        EasyPermissions.requestPermissions(
+                            this,
+                            runBlocking { ComposeResUtils.getResString(ComposeResUtils.StringType.NOTIFICATION_REQUEST) },
+                            1,
+                            Manifest.permission.POST_NOTIFICATIONS,
+                        )
+                        putString("notification_permission_asked", "true")
+                    } else {
+                        // Already asked before: show custom dialog with "Don't show again"
+                        viewModel.showNotificationPermissionDialog()
+                    }
+                }
+            }
+        }
+        viewModel.getLocation()
+
+        if (!BuildConfig.DEBUG) viewModel.checkOfficialBuild(packageName, signingCertSha256())
+        setContent {
+            App(viewModel)
+        }
+    }
+
+    override fun onDestroy() {
+        val shouldStopMusicService = viewModel.shouldStopMusicService()
+        Logger.w("MainActivity", "onDestroy: Should stop service $shouldStopMusicService")
+
+        // Always unbind service if it was bound to prevent MusicBinder leak
+        if (shouldStopMusicService && shouldUnbind && isFinishing) {
+            viewModel.isServiceRunning = false
+        }
+        unloadKoinModules(viewModelModule)
+        super.onDestroy()
+        Logger.d("MainActivity", "onDestroy: ")
+    }
+
+    override fun onRestart() {
+        super.onRestart()
+        viewModel.activityRecreate()
+    }
+
+    private fun startMusicService() {
+//        mediaPlayerHandler.startMediaService(this, serviceConnection)
+        com.maxrave.media3.di
+            .startService(this@MainActivity, serviceConnection)
+        mediaPlayerHandler.pushPlayerError = { it ->
+            pushPlayerError(it)
+        }
+        mediaPlayerHandler.showToast = { type ->
+            viewModel.makeToast(
+                when (type) {
+                    is ToastType.ExplicitContent -> {
+                        runBlocking { ComposeResUtils.getResString(ComposeResUtils.StringType.EXPLICIT_CONTENT_BLOCKED) }
+                    }
+
+                    is ToastType.PlayerError -> {
+                        runBlocking { ComposeResUtils.getResString(ComposeResUtils.StringType.TIME_OUT_ERROR, type.error) }
+                    }
+
+                    is ToastType.SponsorBlockSkip -> {
+                        runBlocking { ComposeResUtils.getResString(ComposeResUtils.StringType.SPONSOR_BLOCK_SKIP, type.category) }
+                    }
+                },
+            )
+        }
+        viewModel.isServiceRunning = true
+        shouldUnbind = true
+        Logger.d("Service", "Service started")
+    }
+
+    private fun checkForUpdate() {
+        if (viewModel.shouldCheckForUpdate()) {
+            viewModel.checkForUpdate()
+        }
+    }
+
+    private fun putString(
+        key: String,
+        value: String,
+    ) {
+        viewModel.putString(key, value)
+    }
+
+    private fun getString(key: String): String? = viewModel.getString(key)
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        viewModel.activityRecreate()
+    }
+
+    private fun isTelevisionDevice(): Boolean {
+        val uiMode = resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK
+        return uiMode == Configuration.UI_MODE_TYPE_TELEVISION ||
+            packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+    }
+}
