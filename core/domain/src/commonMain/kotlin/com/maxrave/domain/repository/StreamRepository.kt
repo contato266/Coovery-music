@@ -24,6 +24,15 @@ interface StreamRepository {
         muxed: Boolean = false, // m3u8 or mp4 (both contain audio and video)
     ): Flow<String?>
 
+    /**
+     * Starts [getStream] for [videoId] before Play, using the same extraction and the same saved
+     * address. A newer call cancels this one only while the player has not joined it.
+     */
+    fun preparePlayback(
+        dataStoreManager: DataStoreManager,
+        videoId: String,
+    )
+
     fun initPlayback(
         playback: String,
         atr: String,

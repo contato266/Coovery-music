@@ -1476,6 +1476,9 @@ class JvmMediaPlayerHandlerImpl(
     }
 
     override fun playMediaItemInMediaSource(index: Int) {
+        queueData.value.data.listTracks.getOrNull(index)?.videoId?.let { videoId ->
+            streamRepository.preparePlayback(dataStoreManager, videoId)
+        }
         val i = if (player.shuffleModeEnabled) player.getUnshuffledIndex(index) else index
         player.seekTo(i, 0)
         player.prepare()
@@ -2462,6 +2465,7 @@ class JvmMediaPlayerHandlerImpl(
             showToast(ToastType.ExplicitContent)
             return
         }
+        streamRepository.preparePlayback(dataStoreManager, track.videoId)
         songRepository.insertSong(track.toSongEntity()).singleOrNull()?.let {
             Logger.d(TAG, "Inserted song: ${track.title}")
         }

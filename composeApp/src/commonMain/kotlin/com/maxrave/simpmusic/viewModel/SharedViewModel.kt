@@ -978,11 +978,18 @@ class SharedViewModel(
         }
     }
 
+    /** Starts the same stream lookup the player will use, so Play does not wait on a cold request. */
+    fun preparePlayback(videoId: String) {
+        if (videoId.isBlank()) return
+        streamRepository.preparePlayback(dataStoreManager, videoId)
+    }
+
     fun loadMediaItemFromTrack(
         track: Track,
         type: String,
         index: Int? = null,
     ) {
+        streamRepository.preparePlayback(dataStoreManager, track.videoId)
         viewModelScope.launch {
             mediaPlayerHandler.clearMediaItems()
             songRepository.insertSong(track.toSongEntity()).lastOrNull()?.let {

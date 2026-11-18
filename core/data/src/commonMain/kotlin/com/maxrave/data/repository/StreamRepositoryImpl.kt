@@ -21,15 +21,19 @@ import com.maxrave.kotlinytmusicscraper.YouTube
 import com.maxrave.kotlinytmusicscraper.models.MediaType
 import com.maxrave.kotlinytmusicscraper.models.response.PlayerResponse
 import com.maxrave.logger.Logger
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -40,6 +44,11 @@ internal class StreamRepositoryImpl(
 ) : StreamRepository {
     // Tempo lookup must not sit on the path that hands the player its URL.
     private val metadataScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val preparationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val flightLock = Mutex()
+    private val flights = HashMap<String, SharedExtraction>()
+    private var preparationJob: Job? = null
+    private var preparationKey: String? = null
     override suspend fun insertNewFormat(newFormat: NewFormatEntity) =
         withContext(Dispatchers.IO) {
             localDataSource.insertNewFormat(newFormat)
@@ -90,7 +99,126 @@ internal class StreamRepositoryImpl(
         }
     }
 
+    override fun preparePlayback(
+        dataStoreManager: DataStoreManager,
+        videoId: String,
+    ) {
+        if (videoId.isBlank()) return
+        val key = streamKey(videoId, isDownloading = false, isVideo = false, muxed = false)
+        if (preparationKey == key && preparationJob?.isActive == true) return
+        val previousJob = preparationJob
+        val previousKey = preparationKey
+        preparationKey = key
+        preparationJob =
+            preparationScope.launch {
+                val saved = localDataSource.getNewFormat(videoId)
+                val savedUrl = saved?.audioUrl
+                if (!savedUrl.isNullOrEmpty() && saved.expiredTime > now()) return@launch
+                getStream(
+                    dataStoreManager,
+                    videoId,
+                    isDownloading = false,
+                    isVideo = false,
+                    muxed = false,
+                ).first()
+            }
+        if (previousKey != null && previousKey != key) {
+            preparationScope.launch {
+                val abandon =
+                    flightLock.withLock {
+                        val flight = flights[previousKey]
+                        if (flight == null || flight.readers <= 1) {
+                            flight?.abandoned = true
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                if (abandon) previousJob?.cancel()
+            }
+        }
+    }
+
     override fun getStream(
+        dataStoreManager: DataStoreManager,
+        videoId: String,
+        isDownloading: Boolean,
+        isVideo: Boolean,
+        muxed: Boolean,
+    ): Flow<String?> =
+        flow {
+            val key = streamKey(videoId, isDownloading, isVideo, muxed)
+            val joined =
+                flightLock.withLock {
+                    val existing = flights[key]
+                    if (existing != null && !existing.abandoned) {
+                        existing.readers += 1
+                        existing
+                    } else {
+                        null
+                    }
+                }
+            if (joined != null) {
+                try {
+                    emit(joined.deferred.await())
+                } finally {
+                    flightLock.withLock { joined.readers -= 1 }
+                }
+                return@flow
+            }
+            val created =
+                SharedExtraction(
+                    deferred = CompletableDeferred(),
+                )
+            val leader =
+                flightLock.withLock {
+                    val existing = flights[key]
+                    if (existing != null && !existing.abandoned) {
+                        existing.readers += 1
+                        existing
+                    } else {
+                        created.readers = 1
+                        flights[key] = created
+                        null
+                    }
+                }
+            if (leader != null) {
+                try {
+                    emit(leader.deferred.await())
+                } finally {
+                    flightLock.withLock { leader.readers -= 1 }
+                }
+                return@flow
+            }
+            try {
+                var emitted = false
+                resolveStream(
+                    dataStoreManager,
+                    videoId,
+                    isDownloading,
+                    isVideo,
+                    muxed,
+                ).collect { value ->
+                    if (!created.deferred.isCompleted) created.deferred.complete(value)
+                    emit(value)
+                    emitted = true
+                }
+                if (!emitted && !created.deferred.isCompleted) created.deferred.complete(null)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                created.deferred.cancel(cancelled)
+                throw cancelled
+            } catch (error: Throwable) {
+                if (!created.deferred.isCompleted) created.deferred.completeExceptionally(error)
+                throw error
+            } finally {
+                flightLock.withLock {
+                    created.readers -= 1
+                    if (flights[key] === created) flights.remove(key)
+                }
+            }
+        }.flowOn(Dispatchers.IO)
+
+    private fun resolveStream(
         dataStoreManager: DataStoreManager,
         videoId: String,
         isDownloading: Boolean,
@@ -423,6 +551,20 @@ internal class StreamRepositoryImpl(
             }
         }
     }
+}
+
+private fun streamKey(
+    videoId: String,
+    isDownloading: Boolean,
+    isVideo: Boolean,
+    muxed: Boolean,
+): String = "$videoId|$isDownloading|$isVideo|$muxed"
+
+private class SharedExtraction(
+    val deferred: CompletableDeferred<String?>,
+) {
+    var readers: Int = 0
+    var abandoned: Boolean = false
 }
 
 /**

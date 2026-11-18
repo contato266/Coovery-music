@@ -224,6 +224,9 @@ fun NowPlayingScreenContent(
     // ⚠️ Use track.videoId (already prefix-stripped at MediaServiceHandlerImpl.kt:386).
     // Do NOT use mediaItem.mediaId — it carries the "Video" prefix for video items.
     val nowPlayingVideoId: String? = nowPlayingState?.track?.videoId
+    LaunchedEffect(nowPlayingVideoId) {
+        nowPlayingVideoId?.let(sharedViewModel::preparePlayback)
+    }
     // The comments sheet reads the id off the media item instead: track is null whenever the item
     // was not in the queue list at the moment it started, and comments exist for every track.
     val commentsVideoId: String? =
