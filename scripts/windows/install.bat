@@ -22,7 +22,7 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo === SimpMusic offline installer ===
+echo === Coovery Music offline installer ===
 echo.
 
 REM --- 2. Install cert to Trusted People (idempotent via certutil) -----------
@@ -71,12 +71,12 @@ if %errorlevel% neq 0 (
 
 REM --- 4. Launch app ---------------------------------------------------------
 echo.
-echo [3/3] Launching SimpMusic ...
+echo [3/3] Launching Coovery Music ...
 start "" "shell:appsFolder\Simpmusic_ejp2bhxmz1qq6!Simpmusic"
 
 echo.
-echo SimpMusic installed successfully.
-echo To uninstall: Settings -^> Apps -^> Installed apps -^> SimpMusic -^> Uninstall
+echo Coovery Music installed successfully.
+echo To uninstall: Settings -^> Apps -^> Installed apps -^> Coovery Music -^> Uninstall
 echo.
 pause
 endlocal

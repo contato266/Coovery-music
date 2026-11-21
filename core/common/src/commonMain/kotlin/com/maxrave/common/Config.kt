@@ -657,8 +657,8 @@ object MEDIA_CUSTOM_COMMAND {
 
 object MEDIA_NOTIFICATION {
     const val NOTIFICATION_ID = 200
-    const val NOTIFICATION_CHANNEL_NAME = "SimpMusic Playback Notification"
-    const val NOTIFICATION_CHANNEL_ID = "SimpMusic Playback Notification ID"
+    const val NOTIFICATION_CHANNEL_NAME = "Coovery Music Playback Notification"
+    const val NOTIFICATION_CHANNEL_ID = "Coovery Music Playback Notification ID"
 }
 
 const val SETTINGS_FILENAME = "settings"

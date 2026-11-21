@@ -158,7 +158,7 @@ class AutoBackupWorker(
                 put(MediaStore.Downloads.DISPLAY_NAME, fileName)
                 put(MediaStore.Downloads.MIME_TYPE, "application/zip")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Downloads.RELATIVE_PATH, "Download/SimpMusic")
+                    put(MediaStore.Downloads.RELATIVE_PATH, "Download/Coovery Music")
                 }
             }
 
@@ -197,7 +197,7 @@ class AutoBackupWorker(
             }
 
             val selectionArgs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                arrayOf("Download/SimpMusic/", "simpmusic_backup_%.zip")
+                arrayOf("Download/Coovery Music/", "coovery_backup_%.zip")
             } else {
                 arrayOf("simpmusic_backup_%.zip")
             }
